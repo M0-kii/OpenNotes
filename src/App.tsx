@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNotes } from "./hooks/useNotes";
 import { useFolders } from "./hooks/useFolders";
 import { useTheme } from "./hooks/useTheme";
 import FoldersSidebar from "./components/FoldersSidebar";
 import Sidebar from "./components/Sidebar";
 import Editor from "./components/Editor";
+import TitleBar from "./components/TitleBar";
 import ConfirmDialog from "./components/ConfirmDialog";
 import { getNoteCountInFolder } from "./lib/db";
 
@@ -33,28 +34,44 @@ export default function App() {
     count: number;
   } | null>(null);
 
+  const [pendingNoteDelete, setPendingNoteDelete] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+
   const isLoading = folders.isLoading || notesLoading;
   const error = folders.error || notesError;
 
   if (isLoading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-editor-bg">
-        <div className="w-5 h-5 border-2 border-black/10 dark:border-white/10 border-t-black/40 dark:border-t-white/30 rounded-full animate-spin" />
+      <div className="h-screen w-screen flex flex-col bg-sidebar-bg">
+        <TitleBar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-6 h-6 border-2 border-black/[0.08] dark:border-white/[0.08] border-t-black/[0.3] dark:border-t-white/[0.25] rounded-full animate-spin" />
+            <span className="text-[12px] text-sidebar-textSecondary/50 tracking-[-0.01em]">
+              Loading OpenNotes...
+            </span>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-editor-bg">
-        <div className="text-center max-w-md px-4">
-          <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-            <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
+      <div className="h-screen w-screen flex flex-col bg-sidebar-bg">
+        <TitleBar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center max-w-md px-4">
+            <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+              <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">Database Error</p>
+            <p className="text-xs text-red-500/70 dark:text-red-400/60 break-all">{error}</p>
           </div>
-          <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">Database Error</p>
-          <p className="text-xs text-red-500/70 dark:text-red-400/60 break-all">{error}</p>
         </div>
       </div>
     );
@@ -73,42 +90,51 @@ export default function App() {
     setPendingDelete({ id, name: folder.name, count });
   };
 
+  const handleDeleteNoteRequest = useCallback((id: string) => {
+    const note = notes.find((n) => n.id === id);
+    if (!note) return;
+    setPendingNoteDelete({ id, title: note.title || "Untitled" });
+  }, [notes]);
+
   const defaultFolder = folders.folders.find(
     (f) => f.id === folders.defaultFolderId
   );
   const defaultFolderName = defaultFolder?.name ?? "Notes";
 
   return (
-    <div className="h-screen w-screen flex bg-editor-bg overflow-hidden">
-      <FoldersSidebar
-        folders={folders.folders}
-        selectedFolderId={folders.selectedFolderId}
-        defaultFolderId={folders.defaultFolderId}
-        onSelectFolder={folders.selectFolder}
-        onCreateFolder={(name) => {
-          folders.createFolder(name);
-        }}
-        onRenameFolder={folders.renameFolder}
-        onDeleteFolderRequest={handleDeleteFolderRequest}
-      />
-      <Sidebar
-        notes={notes}
-        selectedId={selectedId}
-        searchQuery={searchQuery}
-        folderName={folderName}
-        onSearchChange={setSearchQuery}
-        onSelect={selectNote}
-        onCreate={createNote}
-        onDelete={deleteNote}
-        onRename={renameNote}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-      />
-      <Editor
-        note={selectedNote}
-        onContentChange={saveNoteContent}
-        onTitleChange={renameNote}
-      />
+    <div className="h-screen w-screen flex flex-col bg-editor-bg overflow-hidden">
+      <TitleBar />
+      <div className="flex-1 flex overflow-hidden">
+        <FoldersSidebar
+          folders={folders.folders}
+          selectedFolderId={folders.selectedFolderId}
+          defaultFolderId={folders.defaultFolderId}
+          onSelectFolder={folders.selectFolder}
+          onCreateFolder={(name) => {
+            folders.createFolder(name);
+          }}
+          onRenameFolder={folders.renameFolder}
+          onDeleteFolderRequest={handleDeleteFolderRequest}
+        />
+        <Sidebar
+          notes={notes}
+          selectedId={selectedId}
+          searchQuery={searchQuery}
+          folderName={folderName}
+          onSearchChange={setSearchQuery}
+          onSelect={selectNote}
+          onCreate={createNote}
+          onDeleteRequest={handleDeleteNoteRequest}
+          onRename={renameNote}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
+        <Editor
+          note={selectedNote}
+          onContentChange={saveNoteContent}
+          onTitleChange={renameNote}
+        />
+      </div>
 
       <ConfirmDialog
         open={pendingDelete !== null}
@@ -130,6 +156,25 @@ export default function App() {
         onConfirm={() => {
           if (pendingDelete) folders.deleteFolder(pendingDelete.id);
           setPendingDelete(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={pendingNoteDelete !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingNoteDelete(null);
+        }}
+        title={
+          pendingNoteDelete
+            ? `Delete "${pendingNoteDelete.title}"?`
+            : ""
+        }
+        description="This note will be permanently deleted. This action cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          if (pendingNoteDelete) deleteNote(pendingNoteDelete.id);
+          setPendingNoteDelete(null);
         }}
       />
     </div>
