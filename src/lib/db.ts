@@ -1,5 +1,6 @@
 import Database from "@tauri-apps/plugin-sql";
-import type { Note } from "../types";
+import type { Folder, Note } from "../types";
+import { generateId } from "./utils";
 
 let db: Database | null = null;
 
@@ -12,6 +13,17 @@ async function getDb(): Promise<Database> {
 
 export async function initDb(): Promise<void> {
   const database = await getDb();
+
+  await database.execute(
+    `CREATE TABLE IF NOT EXISTS folders (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      is_default INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`
+  );
+
   await database.execute(
     `CREATE TABLE IF NOT EXISTS notes (
       id TEXT PRIMARY KEY,
@@ -21,13 +33,124 @@ export async function initDb(): Promise<void> {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`
   );
+
+  // Add folder_id column to notes if missing (idempotent — sqlite has no
+  // ALTER ... IF NOT EXISTS, so we swallow the duplicate-column error).
+  try {
+    await database.execute("ALTER TABLE notes ADD COLUMN folder_id TEXT");
+  } catch (e) {
+    if (!String(e).toLowerCase().includes("duplicate column")) {
+      throw e;
+    }
+  }
+
   await database.execute(
     `CREATE INDEX IF NOT EXISTS idx_notes_updated ON notes(updated_at DESC)`
   );
+  await database.execute(
+    `CREATE INDEX IF NOT EXISTS idx_notes_folder ON notes(folder_id)`
+  );
+
+  // Seed default folder if none exist.
+  const folderCount = await database.select<{ c: number }[]>(
+    "SELECT COUNT(*) as c FROM folders"
+  );
+  if (folderCount[0].c === 0) {
+    const id = generateId();
+    const now = new Date().toISOString();
+    await database.execute(
+      "INSERT INTO folders (id, name, is_default, created_at, updated_at) VALUES ($1, $2, 1, $3, $4)",
+      [id, "Notes", now, now]
+    );
+  }
+
+  // Backfill any notes missing a folder to the default folder.
+  await database.execute(
+    `UPDATE notes
+     SET folder_id = (SELECT id FROM folders WHERE is_default = 1 LIMIT 1)
+     WHERE folder_id IS NULL`
+  );
 }
 
-export async function getAllNotes(): Promise<Note[]> {
+export async function getDefaultFolderId(): Promise<string> {
   const database = await getDb();
+  const rows = await database.select<{ id: string }[]>(
+    "SELECT id FROM folders WHERE is_default = 1 LIMIT 1"
+  );
+  if (rows.length === 0) {
+    throw new Error("Default folder missing — initDb did not run");
+  }
+  return rows[0].id;
+}
+
+export async function getAllFolders(): Promise<Folder[]> {
+  const database = await getDb();
+  return await database.select<Folder[]>(
+    "SELECT * FROM folders ORDER BY is_default DESC, name COLLATE NOCASE ASC"
+  );
+}
+
+export async function createFolder(name: string): Promise<Folder> {
+  const database = await getDb();
+  const id = generateId();
+  const now = new Date().toISOString();
+  await database.execute(
+    "INSERT INTO folders (id, name, is_default, created_at, updated_at) VALUES ($1, $2, 0, $3, $4)",
+    [id, name, now, now]
+  );
+  return {
+    id,
+    name,
+    is_default: 0,
+    created_at: now,
+    updated_at: now,
+  };
+}
+
+export async function renameFolder(id: string, name: string): Promise<void> {
+  const database = await getDb();
+  const now = new Date().toISOString();
+  await database.execute(
+    "UPDATE folders SET name = $1, updated_at = $2 WHERE id = $3",
+    [name, now, id]
+  );
+}
+
+// Reassigns the folder's notes to `reassignTo`, then deletes the folder.
+// Refuses to delete the default folder.
+export async function deleteFolder(
+  id: string,
+  reassignTo: string
+): Promise<void> {
+  if (id === reassignTo) {
+    throw new Error("Cannot reassign notes to the folder being deleted");
+  }
+  const database = await getDb();
+  await database.execute("BEGIN");
+  try {
+    await database.execute(
+      "UPDATE notes SET folder_id = $1 WHERE folder_id = $2",
+      [reassignTo, id]
+    );
+    await database.execute(
+      "DELETE FROM folders WHERE id = $1 AND is_default = 0",
+      [id]
+    );
+    await database.execute("COMMIT");
+  } catch (e) {
+    await database.execute("ROLLBACK");
+    throw e;
+  }
+}
+
+export async function getAllNotes(folderId?: string | null): Promise<Note[]> {
+  const database = await getDb();
+  if (folderId) {
+    return await database.select<Note[]>(
+      "SELECT * FROM notes WHERE folder_id = $1 ORDER BY updated_at DESC",
+      [folderId]
+    );
+  }
   return await database.select<Note[]>(
     "SELECT * FROM notes ORDER BY updated_at DESC"
   );
@@ -42,17 +165,22 @@ export async function getNoteById(id: string): Promise<Note | null> {
   return rows.length > 0 ? rows[0] : null;
 }
 
-export async function createNote(id: string): Promise<Note> {
+export async function createNote(
+  id: string,
+  folderId?: string | null
+): Promise<Note> {
   const database = await getDb();
   const now = new Date().toISOString();
+  const targetFolderId = folderId ?? (await getDefaultFolderId());
   await database.execute(
-    "INSERT INTO notes (id, title, content, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)",
-    [id, "", "", now, now]
+    "INSERT INTO notes (id, title, content, folder_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)",
+    [id, "", "", targetFolderId, now, now]
   );
   return {
     id,
     title: "",
     content: "",
+    folder_id: targetFolderId,
     created_at: now,
     updated_at: now,
   };
@@ -87,9 +215,29 @@ export async function deleteNote(id: string): Promise<void> {
   await database.execute("DELETE FROM notes WHERE id = $1", [id]);
 }
 
-export async function searchNotes(query: string): Promise<Note[]> {
+export async function getNoteCountInFolder(
+  folderId: string
+): Promise<number> {
+  const database = await getDb();
+  const rows = await database.select<{ c: number }[]>(
+    "SELECT COUNT(*) as c FROM notes WHERE folder_id = $1",
+    [folderId]
+  );
+  return rows[0].c;
+}
+
+export async function searchNotes(
+  query: string,
+  folderId?: string | null
+): Promise<Note[]> {
   const database = await getDb();
   const searchTerm = `%${query}%`;
+  if (folderId) {
+    return await database.select<Note[]>(
+      "SELECT * FROM notes WHERE folder_id = $1 AND (title LIKE $2 OR content LIKE $3) ORDER BY updated_at DESC",
+      [folderId, searchTerm, searchTerm]
+    );
+  }
   return await database.select<Note[]>(
     "SELECT * FROM notes WHERE title LIKE $1 OR content LIKE $2 ORDER BY updated_at DESC",
     [searchTerm, searchTerm]
