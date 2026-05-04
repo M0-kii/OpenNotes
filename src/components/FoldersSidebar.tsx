@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Check, ChevronLeft, ChevronRight,
-  Folder, FolderPlus, Folders, Pencil, Trash2, X,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Folder,
+  FolderPlus,
+  Folders,
+  Pencil,
+  Trash2,
+  X,
 } from "lucide-react";
 import type { Folder as FolderType } from "../types";
 
@@ -137,11 +144,6 @@ export default function FoldersSidebar({
               transition={{ duration: 0.15 }}
               className="flex items-center gap-2"
             >
-              <img
-                src="/OpenNotes.png"
-                alt=""
-                className="w-[17px] h-[17px] rounded-[3px] shrink-0"
-              />
               <h1 className="text-[13px] font-semibold text-sidebar-text tracking-[-0.01em] whitespace-nowrap">
                 OpenNotes
               </h1>
@@ -181,7 +183,10 @@ export default function FoldersSidebar({
                         }`}
             title={collapsed ? "All Notes" : undefined}
           >
-            <Folders className="w-[14px] h-[14px] text-sidebar-textSecondary shrink-0" strokeWidth={1.5} />
+            <Folders
+              className="w-[14px] h-[14px] text-sidebar-textSecondary shrink-0"
+              strokeWidth={1.5}
+            />
             <AnimatePresence>
               {!collapsed && (
                 <motion.span
@@ -240,7 +245,10 @@ export default function FoldersSidebar({
                               }`}
                   title={collapsed ? folder.name : undefined}
                 >
-                  <Folder className="w-[14px] h-[14px] text-sidebar-textSecondary shrink-0" strokeWidth={1.5} />
+                  <Folder
+                    className="w-[14px] h-[14px] text-sidebar-textSecondary shrink-0"
+                    strokeWidth={1.5}
+                  />
                   {isRenaming ? (
                     renameForm
                   ) : (
@@ -313,7 +321,10 @@ export default function FoldersSidebar({
                          bg-black/[0.025] dark:bg-white/[0.025]
                          ${collapsed ? "justify-center px-0" : ""}`}
             >
-              <Folder className="w-[14px] h-[14px] text-sidebar-textSecondary shrink-0" strokeWidth={1.5} />
+              <Folder
+                className="w-[14px] h-[14px] text-sidebar-textSecondary shrink-0"
+                strokeWidth={1.5}
+              />
               {renameForm}
             </motion.div>
           )}
@@ -341,7 +352,10 @@ export default function FoldersSidebar({
                          text-sidebar-textSecondary disabled:opacity-40
                          disabled:hover:bg-transparent"
             >
-              <FolderPlus className="w-[14px] h-[14px] shrink-0" strokeWidth={1.5} />
+              <FolderPlus
+                className="w-[14px] h-[14px] shrink-0"
+                strokeWidth={1.5}
+              />
               <span className="text-[12px] font-medium tracking-[-0.01em]">
                 New Folder
               </span>

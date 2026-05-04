@@ -11,11 +11,17 @@ export default function TitleBar() {
     try {
       const appWindow = getCurrentWindow();
 
-      appWindow.isMaximized().then(setIsMaximized).catch(() => {});
+      appWindow
+        .isMaximized()
+        .then(setIsMaximized)
+        .catch(() => {});
 
       appWindow
         .listen("tauri://resize", () => {
-          appWindow.isMaximized().then(setIsMaximized).catch(() => {});
+          appWindow
+            .isMaximized()
+            .then(setIsMaximized)
+            .catch(() => {});
         })
         .then((fn) => {
           unlisten = fn;
@@ -74,7 +80,10 @@ export default function TitleBar() {
           onClick={handleMinimize}
           className="px-3.5 h-full flex items-center justify-center hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors duration-150"
         >
-          <Minus className="w-3 h-3 text-sidebar-textSecondary/60" strokeWidth={1.5} />
+          <Minus
+            className="w-3 h-3 text-sidebar-textSecondary/60"
+            strokeWidth={1.5}
+          />
         </button>
         <button
           onClick={handleToggleMaximize}
@@ -92,14 +101,20 @@ export default function TitleBar() {
               <rect x="3.5" y="0.5" width="8" height="8" rx="1" />
             </svg>
           ) : (
-            <Square className="w-[11px] h-[11px] text-sidebar-textSecondary/60" strokeWidth={1.5} />
+            <Square
+              className="w-[11px] h-[11px] text-sidebar-textSecondary/60"
+              strokeWidth={1.5}
+            />
           )}
         </button>
         <button
           onClick={handleClose}
           className="px-3.5 h-full flex items-center justify-center hover:bg-red-500/90 transition-colors duration-150 group"
         >
-          <X className="w-3.5 h-3.5 text-sidebar-textSecondary/60 group-hover:text-white transition-colors duration-150" strokeWidth={1.5} />
+          <X
+            className="w-3.5 h-3.5 text-sidebar-textSecondary/60 group-hover:text-white transition-colors duration-150"
+            strokeWidth={1.5}
+          />
         </button>
       </div>
     </div>

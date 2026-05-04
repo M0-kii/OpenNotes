@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import EditorContextMenu from "./ui/EditorContextMenu";
 import type { Note } from "../types";
 
 interface EditorProps {
@@ -187,26 +188,28 @@ export default function Editor({
             </div>
 
             <div className="flex-1 overflow-y-auto px-10 py-5">
-              <div
-                ref={editorRef}
-                contentEditable
-                suppressContentEditableWarning
-                onInput={handleInput}
-                onKeyDown={handleKeyDown}
-                onCompositionStart={handleCompositionStart}
-                onCompositionEnd={handleCompositionEnd}
-                onPaste={handlePaste}
-                onBlur={saveContent}
-                className="editor-content w-full h-full min-h-[200px] text-[14px] leading-[1.8]
-                           font-[400] text-editor-text/90 outline-none whitespace-pre-wrap
-                           break-words caret-accent
-                           empty:before:content-[attr(data-placeholder)]
-                           empty:before:text-editor-text/15 empty:before:tracking-[-0.01em]
-                           selection:bg-accent/15
-                           tracking-[-0.01em]"
-                data-placeholder="Start writing..."
-                spellCheck
-              />
+              <EditorContextMenu editorRef={editorRef}>
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={handleInput}
+                  onKeyDown={handleKeyDown}
+                  onCompositionStart={handleCompositionStart}
+                  onCompositionEnd={handleCompositionEnd}
+                  onPaste={handlePaste}
+                  onBlur={saveContent}
+                  className="editor-content w-full h-full min-h-[200px] text-[14px] leading-[1.8]
+                             font-[400] text-editor-text/90 outline-none whitespace-pre-wrap
+                             break-words caret-accent
+                             empty:before:content-[attr(data-placeholder)]
+                             empty:before:text-editor-text/15 empty:before:tracking-[-0.01em]
+                             selection:bg-accent/15
+                             tracking-[-0.01em]"
+                  data-placeholder="Start writing..."
+                  spellCheck
+                />
+              </EditorContextMenu>
             </div>
           </motion.div>
         )}

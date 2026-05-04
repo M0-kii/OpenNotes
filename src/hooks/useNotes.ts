@@ -58,8 +58,11 @@ export function useNotes({ folderId }: UseNotesOptions) {
   useEffect(() => {
     if (!initialLoadDone.current) return;
     const delay = searchQuery.trim() ? 200 : 0;
-    const timer = setTimeout(() => refreshNotes(), delay);
-    return () => clearTimeout(timer);
+    const timer = setTimeout(async () => {
+      await flushSave();
+      refreshNotes();
+    }, delay);
+    return () => { clearTimeout(timer); };
   }, [searchQuery, folderId, refreshNotes]);
 
   // Keep selection coherent with the current notes list.
