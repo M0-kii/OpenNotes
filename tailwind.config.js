@@ -16,16 +16,21 @@ export default {
           bg: "var(--editor-bg)",
           text: "var(--editor-text)",
         },
+        accent: "var(--accent)",
+        "accent-soft": "var(--accent-soft)",
+        border: "var(--border)",
       },
       borderRadius: {
-        note: "10px",
+        note: "12px",
+        sidebar: "14px",
+        input: "10px",
+        btn: "8px",
       },
-      backdropBlur: {
-        xs: "2px",
+      transitionDuration: {
+        DEFAULT: "200ms",
       },
-      transitionProperty: {
-        width: "width",
-        spacing: "margin, padding",
+      letterSpacing: {
+        apple: "-0.01em",
       },
     },
   },

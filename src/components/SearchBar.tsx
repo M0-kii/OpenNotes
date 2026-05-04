@@ -7,27 +7,28 @@ interface SearchBarProps {
 
 export default function SearchBar({ value, onChange }: SearchBarProps) {
   return (
-    <div className="relative mx-3 mb-2">
-      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sidebar-textSecondary" />
+    <div className="relative mx-3 mb-2.5">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sidebar-textSecondary/45" />
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Search notes..."
-        className="w-full bg-black/5 dark:bg-white/5 text-sidebar-text text-xs
-                   rounded-md py-1.5 pl-8 pr-7
-                   placeholder:text-sidebar-textSecondary/60
+        placeholder="Search"
+        className="w-full bg-black/[0.04] dark:bg-white/[0.04] text-sidebar-text text-[12px]
+                   rounded-input py-1.5 pl-8 pr-8
+                   placeholder:text-sidebar-textSecondary/40
                    outline-none ring-0
-                   focus:bg-black/8 dark:focus:bg-white/8
-                   transition-colors"
+                   focus:bg-black/[0.06] dark:focus:bg-white/[0.06]
+                   transition-all duration-200 tracking-[-0.01em]"
         spellCheck={false}
       />
       {value && (
         <button
           onClick={() => onChange("")}
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5
-                     rounded-sm hover:bg-black/10 dark:hover:bg-white/10
-                     text-sidebar-textSecondary"
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5
+                     rounded-md hover:bg-black/[0.06] dark:hover:bg-white/[0.06]
+                     text-sidebar-textSecondary/50 hover:text-sidebar-textSecondary/80
+                     transition-all"
         >
           <X className="w-3 h-3" />
         </button>
