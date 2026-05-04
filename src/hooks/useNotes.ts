@@ -3,7 +3,12 @@ import type { Note } from "../types";
 import * as db from "../lib/db";
 import { generateId } from "../lib/utils";
 
-export function useNotes() {
+interface UseNotesOptions {
+  // null = All Notes (no folder filter)
+  folderId: string | null;
+}
+
+export function useNotes({ folderId }: UseNotesOptions) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -38,22 +43,34 @@ export function useNotes() {
   const refreshNotes = useCallback(async () => {
     try {
       if (searchQuery.trim()) {
-        const results = await db.searchNotes(searchQuery.trim());
+        const results = await db.searchNotes(searchQuery.trim(), folderId);
         setNotes(results);
       } else {
-        const all = await db.getAllNotes();
+        const all = await db.getAllNotes(folderId);
         setNotes(all);
       }
     } catch (e) {
       console.error("Failed to refresh notes:", e);
     }
-  }, [searchQuery]);
+  }, [searchQuery, folderId]);
 
+  // Debounced for search (200ms), immediate for folder switch.
   useEffect(() => {
     if (!initialLoadDone.current) return;
-    const timer = setTimeout(() => refreshNotes(), 200);
+    const delay = searchQuery.trim() ? 200 : 0;
+    const timer = setTimeout(() => refreshNotes(), delay);
     return () => clearTimeout(timer);
-  }, [searchQuery, refreshNotes]);
+  }, [searchQuery, folderId, refreshNotes]);
+
+  // Keep selection coherent with the current notes list.
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    if (selectedId && !notes.some((n) => n.id === selectedId)) {
+      setSelectedId(notes[0]?.id ?? null);
+    } else if (!selectedId && notes.length > 0) {
+      setSelectedId(notes[0].id);
+    }
+  }, [notes, selectedId]);
 
   const flushSave = useCallback(async () => {
     if (pendingSaveRef.current) {
@@ -94,14 +111,14 @@ export function useNotes() {
     await flushSave();
     const id = generateId();
     try {
-      const note = await db.createNote(id);
+      const note = await db.createNote(id, folderId);
       setNotes((prev) => [note, ...prev]);
       setSelectedId(id);
       setSearchQuery("");
     } catch (e) {
       console.error("Failed to create note:", e);
     }
-  }, [flushSave]);
+  }, [flushSave, folderId]);
 
   const deleteNote = useCallback(
     async (id: string) => {
@@ -166,5 +183,6 @@ export function useNotes() {
     selectNote,
     saveNoteContent,
     flushSave,
+    refreshNotes,
   };
 }

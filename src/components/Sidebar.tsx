@@ -10,6 +10,7 @@ interface SidebarProps {
   notes: Note[];
   selectedId: string | null;
   searchQuery: string;
+  folderName: string;
   onSearchChange: (query: string) => void;
   onSelect: (id: string) => void;
   onCreate: () => void;
@@ -23,6 +24,7 @@ export default function Sidebar({
   notes,
   selectedId,
   searchQuery,
+  folderName,
   onSearchChange,
   onSelect,
   onCreate,
@@ -68,8 +70,8 @@ export default function Sidebar({
                  glass border-r border-border select-none"
     >
       <div className="flex items-center justify-between px-5 pt-4 pb-3">
-        <h1 className="text-[13px] font-semibold text-sidebar-text tracking-[-0.01em]">
-          OpenNotes
+        <h1 className="text-[13px] font-semibold text-sidebar-text tracking-[-0.01em] truncate">
+          {folderName}
         </h1>
         <div className="flex items-center gap-1">
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
