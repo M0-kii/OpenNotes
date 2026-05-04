@@ -86,18 +86,6 @@
   --accent-soft: rgba(51, 154, 240, 0.1);
 }
 
-[data-tauri-drag-region] {
-  -webkit-app-region: drag;
-  app-region: drag;
-}
-
-[data-tauri-drag-region] button,
-[data-tauri-drag-region] input,
-[data-tauri-drag-region] [contenteditable] {
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
-}
-
 * {
   margin: 0;
   padding: 0;
