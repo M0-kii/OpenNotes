@@ -1,128 +1,101 @@
-# OpenNotes — Project Guide for Agents
+# OpenNotes — Agent Guide
 
-**Product north star: Apple Notes clone.** When in doubt about a UX
-decision, open Apple Notes on macOS and copy the behavior. This is not
-a markdown / power-user notes app (Obsidian, Linear, Things 3) — it is
-Apple Notes parity, with our own visual polish on top.
+A local-first, cross-platform (macOS/Windows/Linux) notes app inspired by macOS Notes. Built greenfield in 2026-05.
 
-A local-first desktop notes app. Tauri 2 shell, React 18 + TypeScript
-frontend, SQLite via `@tauri-apps/plugin-sql`. Apple-soft visual
-direction: JetBrains Mono for mono, glass sidebar, generous radii,
-quiet motion. Light and dark are equal citizens.
+Read `Overview.md` for the original product brief. The full architecture and folder rationale lives in the approved plan at `~/.claude/plans/read-overview-md-and-plan-snug-ember.md` — consult it before making structural changes.
 
-The global `~/.claude/CLAUDE.md` sets the design floor (tokens, motion,
-typography). This file adds project-specific context only.
+---
 
-## Product principles (Apple Notes parity)
+## Tech Stack (locked)
 
-- **Editor is rich-text WYSIWYG** (TipTap on ProseMirror) — no markdown
-  source mode, no edit/preview toggle, no code-fence or wiki-link
-  shortcuts that Apple Notes doesn't have.
-- **Auto-save without ceremony** — no "saved" indicator that draws
-  attention. Persistence should feel invisible.
-- **Native chrome** — custom titlebar with traffic lights inset,
-  system materials where the platform supports them, sidebar
-  proportions that mirror Apple Notes.
-- **Organization**: folders + pinning before tags.
+- **Tauri 2.x** (desktop shell, Rust)
+- **React 19 + Vite + TypeScript** (frontend)
+- **Tailwind v4** + CSS variables (styling)
+- **Radix via shadcn/ui** (primitives — never hand-roll dialog/menu/tooltip/popover)
+- **SQLite via `@tauri-apps/plugin-sql`** (local persistence)
+- **Zustand** (UI state cache; SQLite is source of truth)
+- **lucide-react** icons (16/20px, stroke 1.5 — no emoji as UI)
+- **pnpm** (package manager — never npm/yarn)
 
-## Stack
+---
 
-- **Shell**: Tauri 2 (Rust) — `src-tauri/`
-- **Frontend**: React 18.3 + TypeScript 5.6 (strict) + Vite 6
-- **Styling**: Tailwind 3.4 + CSS variables in `src/index.css`
-- **DB**: SQLite via `@tauri-apps/plugin-sql` (no custom Tauri commands yet)
-- **Icons**: lucide-react only — no emoji as UI
-- **Font**: JetBrainsMono (self-hosted in `public/ttf/`)
-
-## Directory map — where to put things
+## Where to Implement What
 
 ```
-OpenNotes/
-├── src/                       # React frontend
-│   ├── App.tsx                # Layout shell: Sidebar + Editor
-│   ├── main.tsx               # ReactDOM mount
-│   ├── index.css              # CSS variables (:root / .dark), @font-face
-│   ├── components/            # Presentational + small stateful UI
-│   │   ├── Sidebar.tsx        # Note list, search, theme toggle, CRUD chrome
-│   │   ├── Editor.tsx         # contenteditable note body
-│   │   ├── SearchBar.tsx
-│   │   └── ThemeToggle.tsx
-│   ├── hooks/
-│   │   ├── useNotes.ts        # ⭐ Core app state: CRUD, search, debounced save
-│   │   └── useTheme.ts        # localStorage + system-pref theme
-│   ├── lib/
-│   │   ├── db.ts              # ⭐ All SQLite queries — add new queries HERE
-│   │   └── utils.ts           # generateId, formatDate, getNotePreview
-│   └── types/index.ts         # Note, Theme
-├── src-tauri/
-│   ├── src/lib.rs             # Tauri builder — add custom commands HERE
-│   ├── src/main.rs            # Thin wrapper around lib.rs
-│   ├── tauri.conf.json        # Window (1100×720), SQL preload (sqlite:opennotes.db)
-│   ├── Cargo.toml
-│   └── capabilities/          # Tauri permissions (SQL allow-list lives here)
-├── public/ttf/                # JetBrainsMono font files
-├── tailwind.config.js         # Custom tokens (sidebar.*, editor.*, accent, accent-soft, border)
-└── index.html
+src/
+├── main.tsx, App.tsx        → entry + root composition only, no logic
+├── styles/
+│   ├── tokens.css           → CSS variables (light + dark). All color lives here.
+│   └── globals.css          → Tailwind import + base resets
+├── components/
+│   ├── layout/              → AppShell, Sidebar, EditorPane, EmptyState (structure)
+│   ├── sidebar/             → NoteList, NoteListItem, SearchInput, NewNoteButton
+│   ├── editor/              → Editor (contenteditable), TitleInput, editor.types.ts
+│   ├── theme/               → ThemeProvider, ThemeToggle
+│   └── ui/                  → shadcn primitives only — added via `pnpm dlx shadcn add <x>`
+├── hooks/                   → React hooks (useNotes, useDebouncedSave, useSearch, useTheme, useKeyboardShortcuts, useActiveNote)
+├── db/
+│   ├── client.ts            → Database.load() singleton — DO NOT call from components
+│   ├── migrations.ts        → schema versioning
+│   └── notes.repo.ts        → ALL SQL for notes lives here. Components/hooks call this, never raw SQL.
+├── stores/                  → Zustand stores. Mutations: write SQLite first, then update store optimistically.
+├── lib/                     → Pure helpers (cn, date, ids, debounce). No React, no SQL.
+└── types/                   → Shared TS types (Note, etc.)
+
+src-tauri/
+├── tauri.conf.json          → window config, plugin allowlist
+├── src/lib.rs               → register tauri_plugin_sql with migrations
+└── capabilities/default.json → permission allowlist (sql:default scoped to notes.db)
 ```
 
-⭐ = load-bearing. Read these first when changing app behavior.
+**Adding a feature checklist:**
+1. Type → `src/types/`
+2. SQL → `src/db/notes.repo.ts`
+3. Store action → `src/stores/notesStore.ts`
+4. Hook (if reused) → `src/hooks/`
+5. Component → matching folder under `src/components/`
+6. Wire into `AppShell.tsx`
 
-## Where to work on what
-
-| Task                              | Touch                                          |
-|-----------------------------------|------------------------------------------------|
-| Add a note field / column         | `lib/db.ts` (schema + queries) → `types/index.ts` → `hooks/useNotes.ts` → consuming component |
-| New SQL query                     | `lib/db.ts` only; expose through `useNotes.ts` |
-| New UI surface                    | `components/` + wire into `App.tsx`            |
-| Theme / color change              | `src/index.css` (CSS vars) + `tailwind.config.js` — never hardcode in components |
-| Editor behavior                   | `components/Editor.tsx` + save flow in `hooks/useNotes.ts` |
-| Custom native call (file dialog…) | `src-tauri/src/lib.rs` (`#[tauri::command]`) + capability in `src-tauri/capabilities/` |
-| Window / app config               | `src-tauri/tauri.conf.json`                    |
+---
 
 ## Conventions
 
-- **Colors**: never hardcode hex/rgb in components. Use CSS variables
-  from `index.css` or Tailwind tokens (`sidebar.*`, `editor.*`,
-  `accent`, `accent-soft`, `border`). Light and dark must both look
-  intentional.
-- **TypeScript**: strict mode is on. No `any`. Prefer narrow types.
-- **Components**: PascalCase files. Keep them presentational; state
-  belongs in `hooks/`.
-- **Saves**: editor uses optimistic UI + 500ms debounce → DB
-  (`useNotes.ts:88`). When changing the save flow, preserve
-  flush-on-unmount and flush-on-note-switch (`useNotes.ts:142,150`).
-- **Search**: 200ms debounce, queries title + content
-  (`useNotes.ts:54`, `lib/db.ts`).
-- **Icons**: lucide-react, 16 or 20px, stroke 1.5 or 2. No emoji.
-- **No new dependencies** without a clear reason; prefer the stack above.
+- **Commit per logical change.** One concern per commit. "Add SQLite client + migrations" and "Add notes repo" are two commits, not one. Never bundle scaffold + behavior + style in a single commit.
+- **Commit message style:** lowercase imperative subject, ≤72 chars. Body explains *why*. Co-author trailer for Claude work.
+- **Never push to `main`.** Always feature branch + PR. The harness enforces this.
+- **No raw color literals** in components — no `text-white`, `bg-black`, `bg-blue-500`, no hex, no rgb. Colors come from `tokens.css` via Tailwind's `@theme` mapping. Components consume tokens.
+- **No external rich-text editors** (TipTap / Slate / Quill / Lexical). The editor is custom contenteditable. Per `Overview.md`, this is non-negotiable.
+- **SQLite is source of truth.** Never let UI state diverge — write to DB first, then update store.
+- **Auto-save, no save button.** Debounce 400ms after last keystroke; flush on window blur.
 
-## Workflow
+---
 
-- **Commit per logical change.** One concern per commit, with a clear
-  message. Don't bundle a refactor with a feature, or two unrelated
-  fixes. If you find yourself writing "and" in a commit subject, split it.
-- Match the existing commit voice (short, imperative, lowercase).
-- Verify before claiming done: `pnpm build` (`tsc && vite build`) must
-  pass. For UI work, run `pnpm tauri dev` and exercise the change in
-  the desktop window — type-check passing ≠ feature working.
+## Aesthetic (project-specific)
 
-## Scripts
+Inherits the global rules in `~/.claude/CLAUDE.md`. Project specifics:
+
+- **Lane:** Things 3 / Apple Notes — warm near-white & near-black, generous whitespace.
+- **Radii:** ~10px default (`--radius` = 10px), 6 for inputs, 14 for cards, 20 for sheets.
+- **Accent:** single warm amber (proposal: `--accent: 35 80% 55%`). Used sparingly — primary action only.
+- **Borders carry hierarchy.** No shadows except on true elevation (modals, menus, command palette).
+- **Light & dark are equal citizens.** Every component designed for both from day one.
+- **Display font:** Geist or SF Pro Display. Never Inter or system-ui as display.
+- **Motion:** 120–250ms, ease-out. Respect `prefers-reduced-motion`.
+
+---
+
+## Build & Run
 
 ```bash
-pnpm install          # first time
-pnpm dev              # vite only (browser, no native shell) — :1420
-pnpm tauri dev        # full desktop app with SQLite — use this for UI work
-pnpm build            # tsc && vite build → dist/
-pnpm tauri build      # production desktop bundle
+pnpm install
+pnpm tauri dev      # dev window
+pnpm tauri build    # production bundle
 ```
 
-## Current state (2026-05-04)
+The SQLite file lives in the OS app-data dir (`~/Library/Application Support/com.opennotes.app/notes.db` on macOS). To wipe local state, delete that file.
 
-Feature-complete MVP: CRUD, search, light/dark, debounced persistence.
-Most recent direction: Apple-soft redesign (commit `cdafa96`) —
-JetBrainsMono, glass sidebar, rounded UI. Stay in that lane unless
-explicitly redirected.
+---
 
-No custom Tauri commands yet — frontend talks to SQLite directly via
-`@tauri-apps/plugin-sql`. Add commands to `lib.rs` only when you need
-native capability the plugin doesn't cover.
+## Out of Scope (MVP)
+
+Rich text formatting, folders/tags, cloud sync, markdown import/export, FTS5 search. The editor abstraction (`editor.types.ts`) is structured to accept rich text later without a schema break.
