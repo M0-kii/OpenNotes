@@ -1,6 +1,4 @@
-You are a senior desktop app engineer.
-
-We're building Windows/macOS notes application using Tauri + React (or Next.js if required) with pnpm.
+We're building Windows/Linux/macOS notes application using Tauri + React (or Next.js if required) with pnpm.
 
 GOAL:
 Create a macOS Notes-style app with a beautiful UI, smooth UX, and local-first storage.
