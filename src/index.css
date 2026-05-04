@@ -161,6 +161,21 @@ body,
     -webkit-backdrop-filter: blur(20px) saturate(180%);
   }
 
+@keyframes context-menu-open {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-context-menu-open {
+  animation: context-menu-open 120ms ease-out;
+}
+
   .dark .glass {
     background: rgba(30, 30, 32, 0.78);
     backdrop-filter: blur(24px) saturate(160%);
