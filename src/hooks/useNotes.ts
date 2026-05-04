@@ -8,20 +8,27 @@ export function useNotes() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef<{ id: string; content: string } | null>(null);
   const initialLoadDone = useRef(false);
 
   useEffect(() => {
     const load = async () => {
-      await db.initDb();
-      const all = await db.getAllNotes();
-      setNotes(all);
-      if (all.length > 0) {
-        setSelectedId(all[0].id);
+      try {
+        await db.initDb();
+        const all = await db.getAllNotes();
+        setNotes(all);
+        if (all.length > 0) {
+          setSelectedId(all[0].id);
+        }
+        initialLoadDone.current = true;
+      } catch (e) {
+        console.error("Failed to initialize database:", e);
+        setError(String(e));
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
-      initialLoadDone.current = true;
     };
     load();
   }, []);
@@ -29,12 +36,16 @@ export function useNotes() {
   const selectedNote = notes.find((n) => n.id === selectedId) ?? null;
 
   const refreshNotes = useCallback(async () => {
-    if (searchQuery.trim()) {
-      const results = await db.searchNotes(searchQuery.trim());
-      setNotes(results);
-    } else {
-      const all = await db.getAllNotes();
-      setNotes(all);
+    try {
+      if (searchQuery.trim()) {
+        const results = await db.searchNotes(searchQuery.trim());
+        setNotes(results);
+      } else {
+        const all = await db.getAllNotes();
+        setNotes(all);
+      }
+    } catch (e) {
+      console.error("Failed to refresh notes:", e);
     }
   }, [searchQuery]);
 
@@ -48,14 +59,18 @@ export function useNotes() {
     if (pendingSaveRef.current) {
       const { id, content } = pendingSaveRef.current;
       pendingSaveRef.current = null;
-      await db.updateNoteContent(id, content);
-      setNotes((prev) =>
-        prev.map((n) =>
-          n.id === id
-            ? { ...n, content, updated_at: new Date().toISOString() }
-            : n
-        )
-      );
+      try {
+        await db.updateNoteContent(id, content);
+        setNotes((prev) =>
+          prev.map((n) =>
+            n.id === id
+              ? { ...n, content, updated_at: new Date().toISOString() }
+              : n
+          )
+        );
+      } catch (e) {
+        console.error("Failed to save note:", e);
+      }
     }
   }, []);
 
@@ -78,15 +93,23 @@ export function useNotes() {
   const createNote = useCallback(async () => {
     await flushSave();
     const id = generateId();
-    const note = await db.createNote(id);
-    setNotes((prev) => [note, ...prev]);
-    setSelectedId(id);
-    setSearchQuery("");
+    try {
+      const note = await db.createNote(id);
+      setNotes((prev) => [note, ...prev]);
+      setSelectedId(id);
+      setSearchQuery("");
+    } catch (e) {
+      console.error("Failed to create note:", e);
+    }
   }, [flushSave]);
 
   const deleteNote = useCallback(
     async (id: string) => {
-      await db.deleteNote(id);
+      try {
+        await db.deleteNote(id);
+      } catch (e) {
+        console.error("Failed to delete note:", e);
+      }
       setNotes((prev) => {
         const filtered = prev.filter((n) => n.id !== id);
         if (selectedId === id) {
@@ -99,7 +122,11 @@ export function useNotes() {
   );
 
   const renameNote = useCallback(async (id: string, title: string) => {
-    await db.updateNoteTitle(id, title);
+    try {
+      await db.updateNoteTitle(id, title);
+    } catch (e) {
+      console.error("Failed to rename note:", e);
+    }
     setNotes((prev) =>
       prev.map((n) =>
         n.id === id
@@ -132,6 +159,7 @@ export function useNotes() {
     searchQuery,
     setSearchQuery,
     isLoading,
+    error,
     createNote,
     deleteNote,
     renameNote,

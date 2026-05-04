@@ -1,0 +1,10 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for OpenNotes",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "sql:default"
+  ]
+}

@@ -11,6 +11,7 @@ export default function App() {
     searchQuery,
     setSearchQuery,
     isLoading,
+    error,
     createNote,
     deleteNote,
     renameNote,
@@ -24,6 +25,22 @@ export default function App() {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-white dark:bg-[#1c1c1e]">
         <div className="w-5 h-5 border-2 border-black/10 dark:border-white/10 border-t-black/40 dark:border-t-white/30 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-white dark:bg-[#1c1c1e]">
+        <div className="text-center max-w-md px-4">
+          <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+            <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">Database Error</p>
+          <p className="text-xs text-red-500/70 dark:text-red-400/60 break-all">{error}</p>
+        </div>
       </div>
     );
   }
