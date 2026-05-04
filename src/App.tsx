@@ -1,29 +1,35 @@
 import { useNotes } from "./hooks/useNotes";
+import { useFolders } from "./hooks/useFolders";
 import { useTheme } from "./hooks/useTheme";
+import FoldersSidebar from "./components/FoldersSidebar";
 import Sidebar from "./components/Sidebar";
 import Editor from "./components/Editor";
 
 export default function App() {
+  const folders = useFolders();
   const {
     notes,
     selectedNote,
     selectedId,
     searchQuery,
     setSearchQuery,
-    isLoading,
-    error,
+    isLoading: notesLoading,
+    error: notesError,
     createNote,
     deleteNote,
     renameNote,
     selectNote,
     saveNoteContent,
-  } = useNotes();
+  } = useNotes({ folderId: folders.selectedFolderId });
 
   const { theme, toggleTheme } = useTheme();
 
+  const isLoading = folders.isLoading || notesLoading;
+  const error = folders.error || notesError;
+
   if (isLoading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-white dark:bg-[#1c1c1e]">
+      <div className="h-screen w-screen flex items-center justify-center bg-editor-bg">
         <div className="w-5 h-5 border-2 border-black/10 dark:border-white/10 border-t-black/40 dark:border-t-white/30 rounded-full animate-spin" />
       </div>
     );
@@ -31,7 +37,7 @@ export default function App() {
 
   if (error) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-white dark:bg-[#1c1c1e]">
+      <div className="h-screen w-screen flex items-center justify-center bg-editor-bg">
         <div className="text-center max-w-md px-4">
           <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
             <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -45,12 +51,40 @@ export default function App() {
     );
   }
 
+  const selectedFolder =
+    folders.selectedFolderId === null
+      ? null
+      : folders.folders.find((f) => f.id === folders.selectedFolderId) ?? null;
+  const folderName = selectedFolder?.name ?? "All Notes";
+
+  // Placeholder confirm — replaced by a styled dialog in a later commit.
+  const handleDeleteFolderRequest = (id: string) => {
+    const folder = folders.folders.find((f) => f.id === id);
+    if (!folder) return;
+    const ok = window.confirm(
+      `Delete folder "${folder.name}"? Its notes will be moved to the default folder.`
+    );
+    if (ok) folders.deleteFolder(id);
+  };
+
   return (
     <div className="h-screen w-screen flex bg-editor-bg overflow-hidden">
+      <FoldersSidebar
+        folders={folders.folders}
+        selectedFolderId={folders.selectedFolderId}
+        defaultFolderId={folders.defaultFolderId}
+        onSelectFolder={folders.selectFolder}
+        onCreateFolder={(name) => {
+          folders.createFolder(name);
+        }}
+        onRenameFolder={folders.renameFolder}
+        onDeleteFolderRequest={handleDeleteFolderRequest}
+      />
       <Sidebar
         notes={notes}
         selectedId={selectedId}
         searchQuery={searchQuery}
+        folderName={folderName}
         onSearchChange={setSearchQuery}
         onSelect={selectNote}
         onCreate={createNote}
