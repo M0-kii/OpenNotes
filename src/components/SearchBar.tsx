@@ -1,3 +1,4 @@
+import { motion, AnimatePresence } from "framer-motion";
 import { Search, X } from "lucide-react";
 
 interface SearchBarProps {
@@ -22,17 +23,25 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
                    transition-all duration-200 tracking-[-0.01em]"
         spellCheck={false}
       />
-      {value && (
-        <button
-          onClick={() => onChange("")}
-          className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5
-                     rounded-md hover:bg-black/[0.06] dark:hover:bg-white/[0.06]
-                     text-sidebar-textSecondary/50 hover:text-sidebar-textSecondary/80
-                     transition-all"
-        >
-          <X className="w-3 h-3" />
-        </button>
-      )}
+      <AnimatePresence>
+        {value && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.7 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.7 }}
+            transition={{ duration: 0.12 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => onChange("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5
+                       rounded-md hover:bg-black/[0.06] dark:hover:bg-white/[0.06]
+                       text-sidebar-textSecondary/50 hover:text-sidebar-textSecondary/80
+                       transition-colors"
+          >
+            <X className="w-3 h-3" />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
