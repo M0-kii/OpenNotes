@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { useNotes } from "./hooks/useNotes";
 import { useFolders } from "./hooks/useFolders";
 import { useTheme } from "./hooks/useTheme";
 import FoldersSidebar from "./components/FoldersSidebar";
 import Sidebar from "./components/Sidebar";
 import Editor from "./components/Editor";
+import ConfirmDialog from "./components/ConfirmDialog";
+import { getNoteCountInFolder } from "./lib/db";
 
 export default function App() {
   const folders = useFolders();
@@ -23,6 +26,12 @@ export default function App() {
   } = useNotes({ folderId: folders.selectedFolderId });
 
   const { theme, toggleTheme } = useTheme();
+
+  const [pendingDelete, setPendingDelete] = useState<{
+    id: string;
+    name: string;
+    count: number;
+  } | null>(null);
 
   const isLoading = folders.isLoading || notesLoading;
   const error = folders.error || notesError;
@@ -57,15 +66,17 @@ export default function App() {
       : folders.folders.find((f) => f.id === folders.selectedFolderId) ?? null;
   const folderName = selectedFolder?.name ?? "All Notes";
 
-  // Placeholder confirm — replaced by a styled dialog in a later commit.
-  const handleDeleteFolderRequest = (id: string) => {
+  const handleDeleteFolderRequest = async (id: string) => {
     const folder = folders.folders.find((f) => f.id === id);
     if (!folder) return;
-    const ok = window.confirm(
-      `Delete folder "${folder.name}"? Its notes will be moved to the default folder.`
-    );
-    if (ok) folders.deleteFolder(id);
+    const count = await getNoteCountInFolder(id);
+    setPendingDelete({ id, name: folder.name, count });
   };
+
+  const defaultFolder = folders.folders.find(
+    (f) => f.id === folders.defaultFolderId
+  );
+  const defaultFolderName = defaultFolder?.name ?? "Notes";
 
   return (
     <div className="h-screen w-screen flex bg-editor-bg overflow-hidden">
@@ -97,6 +108,29 @@ export default function App() {
         note={selectedNote}
         onContentChange={saveNoteContent}
         onTitleChange={renameNote}
+      />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingDelete(null);
+        }}
+        title={pendingDelete ? `Delete "${pendingDelete.name}"?` : ""}
+        description={
+          pendingDelete
+            ? pendingDelete.count === 0
+              ? "This folder is empty and will be removed."
+              : pendingDelete.count === 1
+              ? `Its 1 note will move to "${defaultFolderName}".`
+              : `Its ${pendingDelete.count} notes will move to "${defaultFolderName}".`
+            : ""
+        }
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          if (pendingDelete) folders.deleteFolder(pendingDelete.id);
+          setPendingDelete(null);
+        }}
       />
     </div>
   );
