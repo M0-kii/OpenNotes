@@ -19,7 +19,6 @@ export default function TitleBar() {
       }
 
       try {
-        // In Tauri v2, listen returns a function to unlisten directly
         unlisten = await appWindow.listen("tauri://resize", async () => {
           try {
             const maximized = await appWindow.isMaximized();
