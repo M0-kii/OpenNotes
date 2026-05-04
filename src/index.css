@@ -152,6 +152,31 @@ body,
   background: var(--accent-soft);
 }
 
+@keyframes dialog-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialog-pop-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.dialog-fade[data-state="open"] {
+  animation: dialog-fade-in 140ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dialog-pop[data-state="open"] {
+  animation: dialog-pop-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog-fade[data-state="open"],
+  .dialog-pop[data-state="open"] {
+    animation: none;
+  }
+}
+
 @supports (backdrop-filter: blur(20px)) {
   .glass {
     background: var(--surface);

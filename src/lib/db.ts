@@ -213,6 +213,17 @@ export async function deleteNote(id: string): Promise<void> {
   await database.execute("DELETE FROM notes WHERE id = $1", [id]);
 }
 
+export async function getNoteCountInFolder(
+  folderId: string
+): Promise<number> {
+  const database = await getDb();
+  const rows = await database.select<{ c: number }[]>(
+    "SELECT COUNT(*) as c FROM notes WHERE folder_id = $1",
+    [folderId]
+  );
+  return rows[0].c;
+}
+
 export async function searchNotes(
   query: string,
   folderId?: string | null
