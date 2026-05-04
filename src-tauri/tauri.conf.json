@@ -39,9 +39,7 @@
   },
   "plugins": {
     "sql": {
-      "preload": {
-        "opennotes.db": "sqlite:opennotes.db"
-      }
+      "preload": ["sqlite:opennotes.db"]
     }
   }
 }
