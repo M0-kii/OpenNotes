@@ -39,6 +39,12 @@ export default function App() {
     title: string;
   } | null>(null);
 
+  const handleDeleteNoteRequest = useCallback((id: string) => {
+    const note = notes.find((n) => n.id === id);
+    if (!note) return;
+    setPendingNoteDelete({ id, title: note.title || "Untitled" });
+  }, [notes]);
+
   const isLoading = folders.isLoading || notesLoading;
   const error = folders.error || notesError;
 
@@ -89,12 +95,6 @@ export default function App() {
     const count = await getNoteCountInFolder(id);
     setPendingDelete({ id, name: folder.name, count });
   };
-
-  const handleDeleteNoteRequest = useCallback((id: string) => {
-    const note = notes.find((n) => n.id === id);
-    if (!note) return;
-    setPendingNoteDelete({ id, title: note.title || "Untitled" });
-  }, [notes]);
 
   const defaultFolder = folders.folders.find(
     (f) => f.id === folders.defaultFolderId
