@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Square, X } from "lucide-react";
 
@@ -30,6 +30,12 @@ export default function TitleBar() {
     };
   }, []);
 
+  const handleDragStart = useCallback(() => {
+    try {
+      getCurrentWindow().startDragging();
+    } catch {}
+  }, []);
+
   const handleMinimize = () => {
     try {
       getCurrentWindow().minimize();
@@ -50,8 +56,8 @@ export default function TitleBar() {
 
   return (
     <div
-      data-tauri-drag-region
-      className="h-[38px] flex items-center justify-between bg-sidebar-bg border-b border-border shrink-0 select-none"
+      onMouseDown={handleDragStart}
+      className="h-[38px] flex items-center justify-between bg-sidebar-bg border-b border-border shrink-0 select-none cursor-default"
     >
       <div className="flex items-center gap-2 pl-3">
         <img
