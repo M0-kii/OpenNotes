@@ -46,7 +46,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen w-screen flex bg-white dark:bg-[#1c1c1e] overflow-hidden">
+    <div className="h-screen w-screen flex bg-editor-bg overflow-hidden">
       <Sidebar
         notes={notes}
         selectedId={selectedId}

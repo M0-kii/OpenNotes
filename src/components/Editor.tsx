@@ -106,13 +106,13 @@ export default function Editor({
     return (
       <div className="flex-1 flex items-center justify-center bg-editor-bg">
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-black/3 dark:bg-white/3 flex items-center justify-center">
+          <div className="w-20 h-20 mx-auto mb-5 rounded-[20px] bg-black/[0.025] dark:bg-white/[0.025] flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
             <svg
-              className="w-8 h-8 text-black/15 dark:text-white/10"
+              className="w-10 h-10 text-black/[0.08] dark:text-white/[0.06]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
-              strokeWidth={1.5}
+              strokeWidth={1.2}
             >
               <path
                 strokeLinecap="round"
@@ -121,7 +121,7 @@ export default function Editor({
               />
             </svg>
           </div>
-          <p className="text-sm text-editor-text/30 dark:text-editor-text/20">
+          <p className="text-[13px] text-editor-text/20 dark:text-editor-text/15 tracking-[-0.01em]">
             Select a note or create a new one
           </p>
         </div>
@@ -131,21 +131,20 @@ export default function Editor({
 
   return (
     <div className="flex-1 flex flex-col bg-editor-bg">
-      <div className="px-8 pt-8 pb-2">
+      <div className="px-10 pt-10 pb-3">
         <input
           type="text"
           value={note.title}
           onChange={handleTitleInput}
           placeholder="Title"
-          className="w-full text-2xl font-bold text-editor-text
+          className="w-full text-[26px] font-bold text-editor-text
                      bg-transparent border-none outline-none
-                     placeholder:text-editor-text/20
-                     pb-2 border-b border-black/5 dark:border-white/5"
+                     placeholder:text-editor-text/15 tracking-[-0.02em]
+                     pb-3 border-b border-border"
           spellCheck={false}
         />
-        <div className="flex items-center gap-4 mt-2 text-[10px] text-editor-text/25">
+        <div className="flex items-center gap-6 mt-2.5 text-[11px] text-editor-text/20 tracking-[-0.01em]">
           <span>
-            Created:{" "}
             {new Date(note.created_at).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
@@ -155,7 +154,6 @@ export default function Editor({
             })}
           </span>
           <span>
-            Updated:{" "}
             {new Date(note.updated_at).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
@@ -167,7 +165,7 @@ export default function Editor({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-8 py-4">
+      <div className="flex-1 overflow-y-auto px-10 py-5">
         <div
           ref={editorRef}
           contentEditable
@@ -178,12 +176,13 @@ export default function Editor({
           onCompositionEnd={handleCompositionEnd}
           onPaste={handlePaste}
           onBlur={saveContent}
-          className="w-full h-full min-h-[200px] text-sm leading-relaxed
-                     text-editor-text outline-none whitespace-pre-wrap
-                     break-words caret-blue-500
+          className="editor-content w-full h-full min-h-[200px] text-[14px] leading-[1.8]
+                     font-[400] text-editor-text/90 outline-none whitespace-pre-wrap
+                     break-words caret-[#0071e3]
                      empty:before:content-[attr(data-placeholder)]
-                     empty:before:text-editor-text/20
-                     selection:bg-blue-500/20"
+                     empty:before:text-editor-text/15 empty:before:tracking-[-0.01em]
+                     selection:bg-[#0071e3]/15
+                     tracking-[-0.01em]"
           data-placeholder="Start writing..."
           spellCheck
         />
