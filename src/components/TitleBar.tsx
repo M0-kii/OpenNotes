@@ -1,81 +1,97 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Square, X } from "lucide-react";
 
 export default function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false);
+  const appWindowRef = useRef(getCurrentWindow());
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
+    const appWindow = appWindowRef.current;
 
-    try {
-      const appWindow = getCurrentWindow();
+    const setupWindow = async () => {
+      try {
+        const maximized = await appWindow.isMaximized();
+        setIsMaximized(maximized);
+      } catch (e) {
+        console.error("Failed to check maximized state:", e);
+      }
 
-      appWindow
-        .isMaximized()
-        .then(setIsMaximized)
-        .catch(() => {});
+      try {
+        // In Tauri v2, listen returns a function to unlisten directly
+        unlisten = await appWindow.listen("tauri://resize", async () => {
+          try {
+            const maximized = await appWindow.isMaximized();
+            setIsMaximized(maximized);
+          } catch (e) {
+            console.error("Failed to check maximized state on resize:", e);
+          }
+        });
+      } catch (e) {
+        console.error("Failed to listen to resize:", e);
+      }
+    };
 
-      appWindow
-        .listen("tauri://resize", () => {
-          appWindow
-            .isMaximized()
-            .then(setIsMaximized)
-            .catch(() => {});
-        })
-        .then((fn) => {
-          unlisten = fn;
-        })
-        .catch(() => {});
-    } catch {
-      // not running inside Tauri
-    }
+    setupWindow();
 
     return () => {
-      unlisten?.();
+      if (unlisten) unlisten();
     };
   }, []);
 
-  const handleDragStart = useCallback(() => {
+  const handleDragStart = useCallback(async () => {
     try {
-      getCurrentWindow().startDragging();
-    } catch {}
+      await appWindowRef.current.startDragging();
+    } catch (e) {
+      console.error("Failed to start dragging:", e);
+    }
   }, []);
 
-  const handleMinimize = () => {
+  const handleMinimize = async () => {
     try {
-      getCurrentWindow().minimize();
-    } catch {}
+      await appWindowRef.current.minimize();
+    } catch (e) {
+      console.error("Failed to minimize:", e);
+    }
   };
 
-  const handleToggleMaximize = () => {
+  const handleToggleMaximize = async () => {
     try {
-      getCurrentWindow().toggleMaximize();
-    } catch {}
+      await appWindowRef.current.toggleMaximize();
+    } catch (e) {
+      console.error("Failed to toggle maximize:", e);
+    }
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
     try {
-      getCurrentWindow().close();
-    } catch {}
+      await appWindowRef.current.close();
+    } catch (e) {
+      console.error("Failed to close:", e);
+    }
   };
 
   return (
-    <div
-      onMouseDown={handleDragStart}
-      className="h-[38px] flex items-center justify-between bg-sidebar-bg border-b border-border shrink-0 select-none cursor-default"
-    >
-      <div className="flex items-center gap-2 pl-3">
+    <div className="h-[38px] flex items-center justify-between bg-sidebar-bg border-b border-border shrink-0 select-none cursor-default">
+      {/* Drag region */}
+      <div
+        onMouseDown={handleDragStart}
+        className="flex items-center gap-2 pl-3 flex-1 h-full"
+      >
         <img
           src="/OpenNotes.png"
           alt=""
           className="w-[15px] h-[15px] rounded-[3px]"
+          draggable={false}
         />
         <span className="text-[11px] font-medium text-sidebar-text/60 tracking-[-0.01em]">
           OpenNotes
         </span>
       </div>
-      <div className="flex h-full">
+
+      {/* Window controls */}
+      <div className="flex h-full" onMouseDown={(e) => e.stopPropagation()}>
         <button
           onClick={handleMinimize}
           className="px-3.5 h-full flex items-center justify-center hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors duration-150"
