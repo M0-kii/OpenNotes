@@ -1,5 +1,5 @@
 import Database from "@tauri-apps/plugin-sql";
-import type { Note } from "../types";
+import type { Folder, Note } from "../types";
 import { generateId } from "./utils";
 
 let db: Database | null = null;
@@ -81,8 +81,74 @@ export async function getDefaultFolderId(): Promise<string> {
   return rows[0].id;
 }
 
-export async function getAllNotes(): Promise<Note[]> {
+export async function getAllFolders(): Promise<Folder[]> {
   const database = await getDb();
+  return await database.select<Folder[]>(
+    "SELECT * FROM folders ORDER BY is_default DESC, name COLLATE NOCASE ASC"
+  );
+}
+
+export async function createFolder(name: string): Promise<Folder> {
+  const database = await getDb();
+  const id = generateId();
+  const now = new Date().toISOString();
+  await database.execute(
+    "INSERT INTO folders (id, name, is_default, created_at, updated_at) VALUES ($1, $2, 0, $3, $4)",
+    [id, name, now, now]
+  );
+  return {
+    id,
+    name,
+    is_default: 0,
+    created_at: now,
+    updated_at: now,
+  };
+}
+
+export async function renameFolder(id: string, name: string): Promise<void> {
+  const database = await getDb();
+  const now = new Date().toISOString();
+  await database.execute(
+    "UPDATE folders SET name = $1, updated_at = $2 WHERE id = $3",
+    [name, now, id]
+  );
+}
+
+// Reassigns the folder's notes to `reassignTo`, then deletes the folder.
+// Refuses to delete the default folder.
+export async function deleteFolder(
+  id: string,
+  reassignTo: string
+): Promise<void> {
+  if (id === reassignTo) {
+    throw new Error("Cannot reassign notes to the folder being deleted");
+  }
+  const database = await getDb();
+  await database.execute("BEGIN");
+  try {
+    await database.execute(
+      "UPDATE notes SET folder_id = $1 WHERE folder_id = $2",
+      [reassignTo, id]
+    );
+    await database.execute(
+      "DELETE FROM folders WHERE id = $1 AND is_default = 0",
+      [id]
+    );
+    await database.execute("COMMIT");
+  } catch (e) {
+    await database.execute("ROLLBACK");
+    throw e;
+  }
+}
+
+export async function getAllNotes(folderId?: string | null): Promise<Note[]> {
+  const database = await getDb();
+  if (folderId) {
+    return await database.select<Note[]>(
+      "SELECT * FROM notes WHERE folder_id = $1 ORDER BY updated_at DESC",
+      [folderId]
+    );
+  }
   return await database.select<Note[]>(
     "SELECT * FROM notes ORDER BY updated_at DESC"
   );
@@ -97,19 +163,22 @@ export async function getNoteById(id: string): Promise<Note | null> {
   return rows.length > 0 ? rows[0] : null;
 }
 
-export async function createNote(id: string): Promise<Note> {
+export async function createNote(
+  id: string,
+  folderId?: string | null
+): Promise<Note> {
   const database = await getDb();
   const now = new Date().toISOString();
-  const folderId = await getDefaultFolderId();
+  const targetFolderId = folderId ?? (await getDefaultFolderId());
   await database.execute(
     "INSERT INTO notes (id, title, content, folder_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)",
-    [id, "", "", folderId, now, now]
+    [id, "", "", targetFolderId, now, now]
   );
   return {
     id,
     title: "",
     content: "",
-    folder_id: folderId,
+    folder_id: targetFolderId,
     created_at: now,
     updated_at: now,
   };
@@ -144,9 +213,18 @@ export async function deleteNote(id: string): Promise<void> {
   await database.execute("DELETE FROM notes WHERE id = $1", [id]);
 }
 
-export async function searchNotes(query: string): Promise<Note[]> {
+export async function searchNotes(
+  query: string,
+  folderId?: string | null
+): Promise<Note[]> {
   const database = await getDb();
   const searchTerm = `%${query}%`;
+  if (folderId) {
+    return await database.select<Note[]>(
+      "SELECT * FROM notes WHERE folder_id = $1 AND (title LIKE $2 OR content LIKE $3) ORDER BY updated_at DESC",
+      [folderId, searchTerm, searchTerm]
+    );
+  }
   return await database.select<Note[]>(
     "SELECT * FROM notes WHERE title LIKE $1 OR content LIKE $2 ORDER BY updated_at DESC",
     [searchTerm, searchTerm]
