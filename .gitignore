@@ -23,6 +23,10 @@ bun.lockb
 
 # rust compiled folders
 target/
+src-tauri/target/
+
+# Vite build output
+dist/
 
 # test video for streaming example
 streaming_example_test_video.mp4
