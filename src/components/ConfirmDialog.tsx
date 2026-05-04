@@ -28,58 +28,68 @@ export default function ConfirmDialog({
       <AnimatePresence>
         {open && (
           <AlertDialog.Portal forceMount>
+            {/* Overlay */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.14, ease: "easeOut" }}
+              transition={{ duration: 0.15 }}
             >
-              <AlertDialog.Overlay
-                className="fixed inset-0 z-40 bg-black/30 dark:bg-black/50
-                           backdrop-blur-[2px]"
-              />
+              <AlertDialog.Overlay className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" />
             </motion.div>
+
+            {/* Dialog */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 4 }}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 4 }}
-              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{
+                duration: 0.2,
+                ease: [0.22, 0.61, 0.36, 1],
+              }}
+              className="fixed inset-0 z-50 flex items-center justify-center"
             >
               <AlertDialog.Content
-                className="fixed left-1/2 top-1/2 z-50 w-[90vw] max-w-[380px]
-                           -translate-x-1/2 -translate-y-1/2
-                           glass border border-border rounded-sidebar
-                           shadow-[0_20px_40px_-12px_rgba(0,0,0,0.25)]
-                           px-6 pt-6 pb-5
-                           focus:outline-none"
+                className="w-[340px] rounded-xl bg-[#f5f5f7]/95
+                           dark:bg-[#2c2c2e]/55
+                           backdrop-blur-xl
+                           shadow-[0_12px_40px_rgba(0,0,0,0.2),0_0_0_0.5px_rgba(0,0,0,0.1)]
+                           dark:shadow-[0_12px_40px_rgba(0,0,0,0.4),0_0_0_0.5px_rgba(255,255,255,0.1)]
+                           p-6 focus:outline-none"
               >
-                <AlertDialog.Title
-                  className="text-[14px] font-semibold text-sidebar-text
-                             tracking-[-0.01em] mb-2"
-                >
+                {/* Title */}
+                <AlertDialog.Title className="text-[13px] font-bold text-[#1d1d1f] dark:text-[#f5f5f7] leading-tight mb-2">
                   {title}
                 </AlertDialog.Title>
-                <AlertDialog.Description
-                  className="text-[12px] text-sidebar-textSecondary
-                             leading-relaxed mb-5"
-                >
+
+                {/* Description with secondary text color */}
+                <AlertDialog.Description className="text-[11px] text-[#86868b] dark:text-[#98989d] leading-relaxed mb-6">
                   {description}
                 </AlertDialog.Description>
+
+                {/* Button group*/}
                 <div className="flex justify-end gap-2">
+                  {/* Cancel button */}
                   <AlertDialog.Cancel
-                    className="px-3.5 py-1.5 rounded-btn text-[12px] font-medium
-                               text-sidebar-text tracking-[-0.01em]
-                               hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
-                               transition-colors"
+                    className="h-[26px] px-4 rounded-md text-[12px] font-medium
+                               text-[#1d1d1f] dark:text-[#f5f5f7]
+                               bg-white/55 dark:bg-[#636366]/55
+                               hover:bg-[#e8e8ed] dark:hover:bg-[#7c7c80]
+                               active:bg-[#dcdce0] dark:active:bg-[#8e8e93]
+                               shadow-[0_0_0_0.5px_rgba(0,0,0,0.15)]
+                               dark:shadow-[0_0_0_0.5px_rgba(255,255,255,0.15)]
+                               transition-colors duration-100"
                   >
                     {cancelLabel}
                   </AlertDialog.Cancel>
+
+                  {/* Confirm button */}
                   <AlertDialog.Action
                     onClick={onConfirm}
                     className={
                       destructive
-                        ? "px-3.5 py-1.5 rounded-btn text-[12px] font-medium tracking-[-0.01em] border border-red-500/40 text-red-500 hover:bg-red-500/[0.08] transition-colors"
-                        : "px-3.5 py-1.5 rounded-btn text-[12px] font-medium tracking-[-0.01em] bg-accent text-white hover:opacity-90 transition-opacity"
+                        ? "h-[26px] px-4 rounded-md text-[12px] font-medium text-white bg-[#ff3b30] hover:bg-[#ff453a] active:bg-[#ff6961] shadow-[0_0_0_0.5px_rgba(255,59,48,0.3)] transition-colors duration-100"
+                        : "h-[26px] px-4 rounded-md text-[12px] font-medium text-white bg-[#007aff] hover:bg-[#0071e9] active:bg-[#0066d4] shadow-[0_0_0_0.5px_rgba(0,122,255,0.3)] transition-colors duration-100"
                     }
                   >
                     {confirmLabel}
