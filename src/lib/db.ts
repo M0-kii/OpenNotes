@@ -34,12 +34,14 @@ export async function initDb(): Promise<void> {
     )`
   );
 
-  // Add folder_id column to notes if missing (migration for pre-folders DBs).
-  const cols = await database.select<{ name: string }[]>(
-    "PRAGMA table_info(notes)"
-  );
-  if (!cols.some((c) => c.name === "folder_id")) {
+  // Add folder_id column to notes if missing (idempotent — sqlite has no
+  // ALTER ... IF NOT EXISTS, so we swallow the duplicate-column error).
+  try {
     await database.execute("ALTER TABLE notes ADD COLUMN folder_id TEXT");
+  } catch (e) {
+    if (!String(e).toLowerCase().includes("duplicate column")) {
+      throw e;
+    }
   }
 
   await database.execute(
