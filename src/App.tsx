@@ -1,12 +1,13 @@
 import { useState, useCallback } from "react";
 import { useNotes } from "./hooks/useNotes";
 import { useFolders } from "./hooks/useFolders";
-import { useTheme } from "./hooks/useTheme";
+import { useSettings } from "./hooks/useSettings";
 import FoldersSidebar from "./components/FoldersSidebar";
 import Sidebar from "./components/Sidebar";
 import Editor from "./components/Editor";
 import TitleBar from "./components/TitleBar";
 import ConfirmDialog from "./components/ConfirmDialog";
+import SettingsApplier from "./components/settings/SettingsApplier";
 import { getNoteCountInFolder } from "./lib/db";
 
 export default function App() {
@@ -26,7 +27,17 @@ export default function App() {
     saveNoteContent,
   } = useNotes({ folderId: folders.selectedFolderId });
 
-  const { theme, toggleTheme } = useTheme();
+  const {
+    settings,
+    isLoaded: settingsLoaded,
+    update: updateSetting,
+  } = useSettings();
+  const theme = settings.theme;
+  const toggleTheme = useCallback(() => {
+    const next: typeof theme =
+      theme === "dark" ? "light" : theme === "light" ? "system" : "dark";
+    updateSetting("theme", next);
+  }, [theme, updateSetting]);
 
   const [pendingDelete, setPendingDelete] = useState<{
     id: string;
@@ -45,7 +56,7 @@ export default function App() {
     setPendingNoteDelete({ id, title: note.title || "Untitled" });
   }, [notes]);
 
-  const isLoading = folders.isLoading || notesLoading;
+  const isLoading = folders.isLoading || notesLoading || !settingsLoaded;
   const error = folders.error || notesError;
 
   if (isLoading) {
@@ -103,6 +114,7 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-editor-bg overflow-hidden">
+      <SettingsApplier settings={settings} />
       <TitleBar />
       <div className="flex-1 flex overflow-hidden">
         <FoldersSidebar
