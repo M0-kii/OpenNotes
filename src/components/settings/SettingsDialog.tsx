@@ -1,6 +1,18 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import {
+  X,
+  Palette,
+  PencilLine,
+  Folder as FolderIcon,
+  SunMoon,
+  Type,
+  ALargeSmall,
+  WrapText,
+  Columns2,
+  Eye,
+  FolderDown,
+} from "lucide-react";
 import type { Settings, Folder } from "../../types";
 import { FONT_SIZE_MAX, FONT_SIZE_MIN } from "../../lib/settings";
 import SettingsRow from "./SettingsRow";
@@ -70,8 +82,8 @@ export default function SettingsDialog({
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-5 py-2">
-                  <Section title="Appearance">
-                    <SettingsRow label="Theme">
+                  <Section title="Appearance" icon={Palette}>
+                    <SettingsRow label="Theme" icon={SunMoon}>
                       <SegmentedControl
                         ariaLabel="Theme"
                         value={settings.theme}
@@ -85,9 +97,10 @@ export default function SettingsDialog({
                     </SettingsRow>
                   </Section>
 
-                  <Section title="Editor">
+                  <Section title="Editor" icon={PencilLine}>
                     <div className="py-3">
-                      <div className="text-[13px] font-medium text-editor-text tracking-[-0.01em] mb-2">
+                      <div className="flex items-center gap-2 text-[13px] font-medium text-editor-text tracking-[-0.01em] mb-2">
+                        <Type className="w-[15px] h-[15px] text-editor-text/40" strokeWidth={1.5} />
                         Font
                       </div>
                       <FontPicker
@@ -99,6 +112,7 @@ export default function SettingsDialog({
                     <SettingsRow
                       label="Font size"
                       description={`${settings.editorFontSize}px`}
+                      icon={ALargeSmall}
                     >
                       <input
                         type="range"
@@ -113,7 +127,7 @@ export default function SettingsDialog({
                       />
                     </SettingsRow>
 
-                    <SettingsRow label="Line height">
+                    <SettingsRow label="Line height" icon={WrapText}>
                       <SegmentedControl
                         ariaLabel="Line height"
                         value={settings.editorLineHeight}
@@ -126,7 +140,7 @@ export default function SettingsDialog({
                       />
                     </SettingsRow>
 
-                    <SettingsRow label="Editor width">
+                    <SettingsRow label="Editor width" icon={Columns2}>
                       <SegmentedControl
                         ariaLabel="Editor width"
                         value={settings.editorWidth}
@@ -140,10 +154,11 @@ export default function SettingsDialog({
                     </SettingsRow>
                   </Section>
 
-                  <Section title="Folders">
+                  <Section title="Folders" icon={FolderIcon}>
                     <SettingsRow
                       label="Show note counts"
                       description="Display note count next to each folder."
+                      icon={Eye}
                     >
                       <ToggleSwitch
                         checked={settings.showFolderCounts}
@@ -154,6 +169,7 @@ export default function SettingsDialog({
                     <SettingsRow
                       label="Default folder for new notes"
                       description="Used when no folder is selected."
+                      icon={FolderDown}
                     >
                       <select
                         value={settings.defaultFolderId ?? ""}
@@ -194,14 +210,17 @@ export default function SettingsDialog({
 function Section({
   title,
   children,
+  icon: Icon,
 }: {
   title: string;
   children: React.ReactNode;
+  icon?: React.ComponentType<{ className?: string; strokeWidth?: string | number }>;
 }) {
   return (
     <div className="py-3 first:pt-2 last:pb-2 border-b border-border last:border-b-0">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.06em]
+      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.06em]
                       text-editor-text/40 mb-1.5 px-0.5">
+        {Icon && <Icon className="w-[13px] h-[13px]" strokeWidth={1.75} />}
         {title}
       </div>
       <div>{children}</div>
