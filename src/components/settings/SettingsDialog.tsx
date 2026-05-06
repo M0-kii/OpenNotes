@@ -92,7 +92,6 @@ export default function SettingsDialog({
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.97 }}
                 transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                layout
                 className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
                            z-50 w-[calc(100vw-32px)] sm:w-[600px]
                            max-h-[min(calc(100vh-48px),640px)]
