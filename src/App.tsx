@@ -281,7 +281,7 @@ export default function App() {
   const defaultFolderName = defaultFolder?.name ?? "Notes";
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-editor-bg overflow-hidden">
+    <div className="h-screen w-screen flex flex-col bg-editor-bg overflow-hidden" onContextMenu={(e) => e.preventDefault()}>
       <SettingsApplier settings={settings} />
       <TitleBar style={settings.titlebarStyle} />
       <div className="flex-1 flex overflow-hidden">

@@ -86,9 +86,9 @@ export default function SettingsDialog({
               onOpenAutoFocus={(e) => e.preventDefault()}
             >
               <motion.div
-                initial={{ opacity: 0, scale: 0.97, y: 12 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.97, y: 8 }}
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.97 }}
                 transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                 layout
                 className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2

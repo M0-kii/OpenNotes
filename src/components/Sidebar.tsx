@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
 import type { Note } from "../types";
 import SearchBar from "./SearchBar";
+import GenericContextMenu from "./ui/GenericContextMenu";
+import InputContextMenu from "./ui/InputContextMenu";
 import { formatDate, getNotePreview } from "../lib/utils";
 
 interface SidebarProps {
@@ -39,8 +41,8 @@ export default function Sidebar({
     }
   }, [renamingId]);
 
-  const handleStartRename = (note: Note, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleStartRename = (note: Note, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setRenamingId(note.id);
     setRenameValue(note.title);
   };
@@ -96,15 +98,32 @@ export default function Sidebar({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -12, height: 0 }}
                 transition={{ duration: 0.18, ease: "easeOut" }}
-                onClick={(e) => onSelect(note.id, e.metaKey || e.ctrlKey)}
-                className={`group relative px-3 py-2.5 mx-0.5 rounded-note cursor-pointer
-                            transition-colors duration-200
-                            ${
-                              note.id === selectedId
-                                ? "bg-black/[0.05] dark:bg-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.03)]"
-                                : "hover:bg-black/[0.025] dark:hover:bg-white/[0.025]"
-                            }`}
               >
+                <GenericContextMenu
+                  items={[
+                    {
+                      label: "Rename",
+                      icon: Pencil,
+                      onClick: () => handleStartRename(note),
+                    },
+                    {
+                      label: "Delete",
+                      icon: Trash2,
+                      onClick: () => onDeleteRequest(note.id),
+                      destructive: true,
+                    },
+                  ]}
+                >
+                  <motion.div
+                    onClick={(e) => onSelect(note.id, e.metaKey || e.ctrlKey)}
+                    className={`group relative px-3 py-2.5 mx-0.5 rounded-note cursor-pointer
+                                transition-colors duration-200
+                                ${
+                                  note.id === selectedId
+                                    ? "bg-black/[0.05] dark:bg-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.03)]"
+                                    : "hover:bg-black/[0.025] dark:hover:bg-white/[0.025]"
+                                }`}
+                  >
                 <div className="flex items-center justify-between min-w-0">
                   {renamingId === note.id ? (
                     <motion.form
@@ -196,6 +215,8 @@ export default function Sidebar({
                     </>
                   )}
                 </div>
+              </motion.div>
+                </GenericContextMenu>
               </motion.div>
             ))}
           </AnimatePresence>
