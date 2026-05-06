@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import type { Folder as FolderType } from "../types";
+import GenericContextMenu from "./ui/GenericContextMenu";
 
 interface FoldersSidebarProps {
   folders: FolderType[];
@@ -61,8 +62,8 @@ export default function FoldersSidebar({
     }
   }, [renamingId, isRenamingCollapsed]);
 
-  const startRename = (folder: FolderType, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const startRename = (folder: FolderType, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setRenamingId(folder.id);
     setRenameValue(folder.name);
     setIsRenamingCollapsed(false);
@@ -339,21 +340,42 @@ export default function FoldersSidebar({
                     ease: [0.4, 0, 0.2, 1],
                     layout: { duration: 0.25, ease: [0.4, 0, 0.2, 1] },
                   }}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
-                  onMouseEnter={() => setHoveredFolderId(folder.id)}
-                  onMouseLeave={() => setHoveredFolderId(null)}
-                  onClick={() => !isRenaming && onSelectFolder(folder.id)}
-                  className={`group relative flex items-center gap-2 px-2.5 py-1.5 rounded-note cursor-pointer
-                              transition-colors duration-200
-                              ${collapsed ? "justify-center px-0" : ""}
-                              ${
-                                isSelected
-                                  ? "bg-black/[0.05] dark:bg-white/[0.06]"
-                                  : "hover:bg-black/[0.025] dark:hover:bg-white/[0.025]"
-                              }`}
-                  title={collapsed ? folder.name : undefined}
                 >
+                  <GenericContextMenu
+                    items={[
+                      {
+                        label: "Rename",
+                        icon: Pencil,
+                        onClick: () => startRename(folder),
+                      },
+                      ...(isDefault
+                        ? []
+                        : [
+                            {
+                              label: "Delete" as const,
+                              icon: Trash2,
+                              onClick: () => onDeleteFolderRequest(folder.id),
+                              destructive: true as const,
+                            },
+                          ]),
+                    ]}
+                  >
+                    <motion.div
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
+                      onMouseEnter={() => setHoveredFolderId(folder.id)}
+                      onMouseLeave={() => setHoveredFolderId(null)}
+                      onClick={() => !isRenaming && onSelectFolder(folder.id)}
+                      className={`group relative flex items-center gap-2 px-2.5 py-1.5 rounded-note cursor-pointer
+                                  transition-colors duration-200
+                                  ${collapsed ? "justify-center px-0" : ""}
+                                  ${
+                                    isSelected
+                                      ? "bg-black/[0.05] dark:bg-white/[0.06]"
+                                      : "hover:bg-black/[0.025] dark:hover:bg-white/[0.025]"
+                                  }`}
+                      title={collapsed ? folder.name : undefined}
+                    >
                   <motion.div
                     animate={{
                       ...(isSelected && !isHovered
@@ -449,6 +471,8 @@ export default function FoldersSidebar({
                       </AnimatePresence>
                     </>
                   )}
+                </motion.div>
+                  </GenericContextMenu>
                 </motion.div>
               );
             })}

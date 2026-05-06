@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X as CloseIcon } from "lucide-react";
 import EditorContextMenu from "./ui/EditorContextMenu";
+import InputContextMenu from "./ui/InputContextMenu";
 import type { Note } from "../types";
 
 interface EditorProps {
@@ -28,6 +29,7 @@ export default function Editor({
   onClose,
 }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const lastContentRef = useRef<string>("");
   const isComposingRef = useRef(false);
   const noteIdRef = useRef<string | null>(null);
@@ -196,18 +198,21 @@ export default function Editor({
           >
             <div className="editor-column flex-1 flex flex-col min-h-0">
               <div className="px-10 pt-10 pb-3">
-                <input
-                  type="text"
-                  value={note.title}
-                  onChange={handleTitleChange}
-                  placeholder="Title"
-                  className="w-full text-[26px] font-bold text-editor-text
-                             bg-transparent border-none outline-none
-                             placeholder:text-editor-text/15 tracking-[-0.02em]
-                             pb-3 border-b border-border transition-colors duration-200
-                             focus:border-accent/40"
-                  spellCheck={false}
-                />
+                <InputContextMenu inputRef={titleInputRef}>
+                  <input
+                    ref={titleInputRef}
+                    type="text"
+                    value={note.title}
+                    onChange={handleTitleChange}
+                    placeholder="Title"
+                    className="w-full text-[26px] font-bold text-editor-text
+                              bg-transparent border-none outline-none
+                              placeholder:text-editor-text/15 tracking-[-0.02em]
+                              pb-3 border-b border-border transition-colors duration-200
+                              focus:border-accent/40"
+                    spellCheck={false}
+                  />
+                </InputContextMenu>
                 <div className="flex items-center gap-6 mt-2.5 text-[11px] text-editor-text/20 tracking-[-0.01em]">
                   <span>
                     Created{" "}
