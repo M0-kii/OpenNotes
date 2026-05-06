@@ -35,14 +35,14 @@ src/
 │   │   ├── SettingsRow.tsx     → single setting row (label, description, control)
 │   │   ├── SegmentedControl.tsx→ A/B toggle (e.g. "Note" | "Mind Map")
 │   │   ├── FontPicker.tsx      → font dropdown with preview
-│   │   └── SettingsApplier.tsx → applies theme/font/scale CSS props to document
+│   │   └── SettingsApplier.tsx → applies theme/font/scale/accessibility CSS data-* attributes to <html>
 │   ├── ui/
 │   │   ├── GenericContextMenu.tsx  → Radix ContextMenu wrapper for rename/delete on notes & folders
 │   │   ├── InputContextMenu.tsx    → Cut/Copy/Paste/Select All for <input>/<textarea>
 │   │   ├── EditorContextMenu.tsx   → context menu for the editor contenteditable
-│   │   └── NoteTypePopup.tsx       → popup below + button to choose "Note" or "Mind Map"
-│   ├── Sidebar.tsx            → note list with search, sortable drag-and-drop, + button with NoteTypePopup
-│   ├── FoldersSidebar.tsx     → folder list with sortable drag-and-drop, inline rename
+│   │   └── NoteTypePopup.tsx       → popup below + button to choose "Note" or "Mind Map" (renders via createPortal to document.body)
+│   ├── Sidebar.tsx            → note list with search, sortable drag-and-drop, collapse/expand, drag-to-folder, drag-to-editor (snap layouts), + button with NoteTypePopup
+│   ├── FoldersSidebar.tsx     → folder list with sortable drag-and-drop, inline rename, useDroppable for folder drop targets
 │   ├── SearchBar.tsx          → search input wrapped with InputContextMenu
 │   ├── Editor.tsx             → contenteditable editor + title input, both with context menus
 │   ├── TitleBar.tsx           → macOS-style traffic lights or Windows caption buttons
@@ -50,13 +50,13 @@ src/
 │   ├── SplitDivider.tsx       → resize handle for split-pane mode
 │   ├── ConfirmDialog.tsx      → Radix AlertDialog for destructive confirmations
 │   ├── ErrorBoundary.tsx      → React error boundary
-│   └── MindmapEditor.tsx      → canvas-based mind map with nodes, SVG connections, pan/zoom
+│   └── MindmapEditor.tsx      → canvas-based mind map with nodes, SVG connections, pan/zoom, radial layout, depth-aware coloring
 ├── hooks/
 │   ├── useNotes.ts            → note CRUD, search, reorder, debounced save
 │   ├── useFolders.ts          → folder CRUD, reorder
 │   └── useSettings.ts         → load/update settings from SQLite
 ├── lib/
-│   ├── db.ts                  → ALL SQL (initDb, CRUD for notes/folders/settings, reorder, migrations)
+│   ├── db.ts                  → ALL SQL (initDb, CRUD for notes/folders/settings, reorder, moveNoteToFolder, migrations)
 │   ├── settings.ts            → DEFAULT_SETTINGS + coercion for each key
 │   └── utils.ts               → cn() + generateId() helpers
 └── types/
@@ -64,7 +64,8 @@ src/
 
 src-tauri/
 ├── tauri.conf.json            → window config, plugin allowlist
-├── src/lib.rs                 → register tauri_plugin_sql
+├── src/lib.rs                 → register tauri_plugin_sql + discord_rpc commands
+├── src/discord_rpc.rs         → Discord Rich Presence integration
 └── capabilities/default.json → permission allowlist (sql:default scoped to notes.db)
 ```
 
@@ -115,7 +116,7 @@ MindmapData { nodes: MindmapNode[] }
 ```
 
 ### Current Settings keys
-`theme`, `titlebarStyle`, `uiFont`, `editorFont`, `editorFontSize`, `editorLineHeight`, `editorWidth`, `showFolderCounts`, `defaultFolderId`, `mindmapLayout`
+`theme`, `titlebarStyle`, `uiFont`, `editorFont`, `editorFontSize`, `editorLineHeight`, `editorWidth`, `showFolderCounts`, `defaultFolderId`, `mindmapLayout`, `discordRpcEnabled`, `highContrast`, `largerText`, `reducedMotion`
 
 ---
 
