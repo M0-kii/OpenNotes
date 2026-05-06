@@ -3,195 +3,240 @@
 @tailwind utilities;
 
 @font-face {
-  font-family: "JetBrainsMono";
-  src: url("/ttf/JetBrainsMono-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
+    font-family: "JetBrainsMono";
+    src: url("/ttf/JetBrainsMono-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
 }
 
 @font-face {
-  font-family: "JetBrainsMono";
-  src: url("/ttf/JetBrainsMono-Italic.ttf") format("truetype");
-  font-weight: 400;
-  font-style: italic;
+    font-family: "JetBrainsMono";
+    src: url("/ttf/JetBrainsMono-Italic.ttf") format("truetype");
+    font-weight: 400;
+    font-style: italic;
 }
 
 @font-face {
-  font-family: "JetBrainsMono";
-  src: url("/ttf/JetBrainsMono-Medium.ttf") format("truetype");
-  font-weight: 500;
-  font-style: normal;
+    font-family: "JetBrainsMono";
+    src: url("/ttf/JetBrainsMono-Medium.ttf") format("truetype");
+    font-weight: 500;
+    font-style: normal;
 }
 
 @font-face {
-  font-family: "JetBrainsMono";
-  src: url("/ttf/JetBrainsMono-MediumItalic.ttf") format("truetype");
-  font-weight: 500;
-  font-style: italic;
+    font-family: "JetBrainsMono";
+    src: url("/ttf/JetBrainsMono-MediumItalic.ttf") format("truetype");
+    font-weight: 500;
+    font-style: italic;
 }
 
 @font-face {
-  font-family: "JetBrainsMono";
-  src: url("/ttf/JetBrainsMono-SemiBold.ttf") format("truetype");
-  font-weight: 600;
-  font-style: normal;
+    font-family: "JetBrainsMono";
+    src: url("/ttf/JetBrainsMono-SemiBold.ttf") format("truetype");
+    font-weight: 600;
+    font-style: normal;
 }
 
 @font-face {
-  font-family: "JetBrainsMono";
-  src: url("/ttf/JetBrainsMono-SemiBoldItalic.ttf") format("truetype");
-  font-weight: 600;
-  font-style: italic;
+    font-family: "JetBrainsMono";
+    src: url("/ttf/JetBrainsMono-SemiBoldItalic.ttf") format("truetype");
+    font-weight: 600;
+    font-style: italic;
 }
 
 @font-face {
-  font-family: "JetBrainsMono";
-  src: url("/ttf/JetBrainsMono-Bold.ttf") format("truetype");
-  font-weight: 700;
-  font-style: normal;
+    font-family: "JetBrainsMono";
+    src: url("/ttf/JetBrainsMono-Bold.ttf") format("truetype");
+    font-weight: 700;
+    font-style: normal;
 }
 
 @font-face {
-  font-family: "JetBrainsMono";
-  src: url("/ttf/JetBrainsMono-Light.ttf") format("truetype");
-  font-weight: 300;
-  font-style: normal;
+    font-family: "JetBrainsMono";
+    src: url("/ttf/JetBrainsMono-Light.ttf") format("truetype");
+    font-weight: 300;
+    font-style: normal;
 }
 
 :root {
-  --sidebar-bg: #f0f0f3;
-  --sidebar-hover: rgba(0, 0, 0, 0.045);
-  --sidebar-active: rgba(0, 0, 0, 0.07);
-  --sidebar-text: #1d1d1f;
-  --sidebar-text-secondary: #86868b;
-  --editor-bg: #fbfbfd;
-  --editor-text: #1d1d1f;
-  --surface: rgba(255, 255, 255, 0.72);
-  --border: rgba(0, 0, 0, 0.06);
-  --accent: #0071e3;
-  --accent-soft: rgba(0, 113, 227, 0.08);
+    --sidebar-bg: #f0f0f3;
+    --sidebar-hover: rgba(0, 0, 0, 0.045);
+    --sidebar-active: rgba(0, 0, 0, 0.07);
+    --sidebar-text: #1d1d1f;
+    --sidebar-text-secondary: #86868b;
+    --editor-bg: #fbfbfd;
+    --editor-text: #1d1d1f;
+    --surface: rgba(255, 255, 255, 0.72);
+    --border: rgba(0, 0, 0, 0.06);
+    --accent: #c29d00;
+    --accent-soft: rgba(0, 113, 227, 0.08);
 }
 
 .dark {
-  --sidebar-bg: #1e1e20;
-  --sidebar-hover: rgba(255, 255, 255, 0.055);
-  --sidebar-active: rgba(255, 255, 255, 0.08);
-  --sidebar-text: #f5f5f7;
-  --sidebar-text-secondary: #98989d;
-  --editor-bg: #1a1a1c;
-  --editor-text: #f5f5f7;
-  --surface: rgba(30, 30, 32, 0.78);
-  --border: rgba(255, 255, 255, 0.06);
-  --accent: #339af0;
-  --accent-soft: rgba(51, 154, 240, 0.1);
+    --sidebar-bg: #1e1e20;
+    --sidebar-hover: rgba(255, 255, 255, 0.055);
+    --sidebar-active: rgba(255, 255, 255, 0.08);
+    --sidebar-text: #f5f5f7;
+    --sidebar-text-secondary: #98989d;
+    --editor-bg: #1a1a1c;
+    --editor-text: #f5f5f7;
+    --surface: rgba(30, 30, 32, 0.78);
+    --border: rgba(255, 255, 255, 0.06);
+    --accent: #fdcf0d;
+    --accent-soft: rgba(51, 154, 240, 0.1);
 }
 
 * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 html,
 body,
 #root {
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  font-family: var(--ui-font-family, -apple-system, BlinkMacSystemFont, "SF Pro Display",
-    "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background: var(--editor-bg);
-  color: var(--editor-text);
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    font-family: var(
+        --ui-font-family,
+        -apple-system,
+        BlinkMacSystemFont,
+        "SF Pro Display",
+        "SF Pro Text",
+        "Helvetica Neue",
+        Helvetica,
+        Arial,
+        sans-serif
+    );
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--editor-bg);
+    color: var(--editor-text);
 }
 
 .font-mono {
-  font-family: "JetBrainsMono", "SF Mono", "Cascadia Code", "Fira Code",
-    "Consolas", monospace;
-  font-feature-settings: "liga" 1, "calt" 1;
+    font-family:
+        "JetBrainsMono", "SF Mono", "Cascadia Code", "Fira Code", "Consolas",
+        monospace;
+    font-feature-settings:
+        "liga" 1,
+        "calt" 1;
 }
 
 .editor-surface {
-  font-family: var(--editor-font-family, -apple-system, system-ui, sans-serif);
-  font-size: var(--editor-font-size, 16px);
-  line-height: var(--editor-line-height, 1.6);
-  transition: font-size 120ms ease-out, font-family 120ms ease-out;
+    font-family: var(
+        --editor-font-family,
+        -apple-system,
+        system-ui,
+        sans-serif
+    );
+    font-size: var(--editor-font-size, 16px);
+    line-height: var(--editor-line-height, 1.6);
+    transition:
+        font-size 120ms ease-out,
+        font-family 120ms ease-out;
 }
 
 .editor-column {
-  width: 100%;
-  max-width: var(--editor-max-width, 760px);
-  margin-left: auto;
-  margin-right: auto;
-  transition: max-width 200ms ease-out;
+    width: 100%;
+    max-width: var(--editor-max-width, 760px);
+    margin-left: auto;
+    margin-right: auto;
+    transition: max-width 200ms ease-out;
 }
 
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+    width: 5px;
+    height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+    background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.10);
-  border-radius: 10px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.10);
+    background: rgba(255, 255, 255, 0.1);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.18);
+    background: rgba(0, 0, 0, 0.18);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.18);
 }
 
 [contenteditable]:focus {
-  outline: none;
+    outline: none;
 }
 
 ::selection {
-  background: var(--accent-soft);
+    background: var(--accent-soft);
 }
 
 .dark ::selection {
-  background: var(--accent-soft);
+    background: var(--accent-soft);
 }
-
-
 
 @supports (backdrop-filter: blur(20px)) {
-  .glass {
-    background: var(--surface);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-  }
+    .glass {
+        background: var(--surface);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+    }
 
-@keyframes context-menu-open {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+    @keyframes context-menu-open {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .animate-context-menu-open {
+        animation: context-menu-open 120ms ease-out;
+    }
+
+    .dark .glass {
+        background: rgba(30, 30, 32, 0.78);
+        backdrop-filter: blur(24px) saturate(160%);
+        -webkit-backdrop-filter: blur(24px) saturate(160%);
+    }
 }
 
-.animate-context-menu-open {
-  animation: context-menu-open 120ms ease-out;
+/* ── Accessibility ─────────────────────────────────── */
+
+/* High Contrast */
+[data-high-contrast] {
+  --border: rgba(0, 0, 0, 0.15);
+  --sidebar-text-secondary: #3a3a3c;
 }
 
-  .dark .glass {
-    background: rgba(30, 30, 32, 0.78);
-    backdrop-filter: blur(24px) saturate(160%);
-    -webkit-backdrop-filter: blur(24px) saturate(160%);
-  }
+.dark[data-high-contrast] {
+  --border: rgba(255, 255, 255, 0.15);
+  --sidebar-text-secondary: #d1d1d6;
+}
+
+/* Larger Text */
+[data-larger-text] {
+  font-size: 120%;
+}
+
+/* Reduced Motion */
+[data-reduced-motion] *,
+[data-reduced-motion] *::before,
+[data-reduced-motion] *::after {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
 }

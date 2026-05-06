@@ -63,5 +63,35 @@ export default function SettingsApplier({ settings }: Props) {
     settings.editorWidth,
   ]);
 
+  // Accessibility: High Contrast
+  useEffect(() => {
+    const root = document.documentElement;
+    if (settings.highContrast) {
+      root.setAttribute("data-high-contrast", "");
+    } else {
+      root.removeAttribute("data-high-contrast");
+    }
+  }, [settings.highContrast]);
+
+  // Accessibility: Larger Text
+  useEffect(() => {
+    const root = document.documentElement;
+    if (settings.largerText) {
+      root.setAttribute("data-larger-text", "");
+    } else {
+      root.removeAttribute("data-larger-text");
+    }
+  }, [settings.largerText]);
+
+  // Accessibility: Reduced Motion
+  useEffect(() => {
+    const root = document.documentElement;
+    if (settings.reducedMotion) {
+      root.setAttribute("data-reduced-motion", "");
+    } else {
+      root.removeAttribute("data-reduced-motion");
+    }
+  }, [settings.reducedMotion]);
+
   return null;
 }

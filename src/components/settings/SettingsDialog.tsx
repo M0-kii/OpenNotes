@@ -19,8 +19,15 @@ import {
   Minus,
   Plus,
   ChevronDown,
+  Radio,
 } from "lucide-react";
-import type { Settings, Folder, TitlebarStyle, FontKey, MindmapLayout } from "../../types";
+import type {
+  Settings,
+  Folder,
+  TitlebarStyle,
+  FontKey,
+  MindmapLayout,
+} from "../../types";
 import { FONT_SIZE_MAX, FONT_SIZE_MIN } from "../../lib/settings";
 import SettingsRow from "./SettingsRow";
 import SegmentedControl from "./SegmentedControl";
@@ -36,7 +43,14 @@ interface Props {
 
 type TabId = "appearance" | "editor" | "folders" | "mindmap";
 
-const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string; strokeWidth?: string | number }> }[] = [
+const TABS: {
+  id: TabId;
+  label: string;
+  icon: React.ComponentType<{
+    className?: string;
+    strokeWidth?: string | number;
+  }>;
+}[] = [
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "editor", label: "Editor", icon: PencilLine },
   { id: "folders", label: "Folders", icon: FolderIcon },
@@ -83,16 +97,13 @@ export default function SettingsDialog({
                 className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-50"
               />
             </Dialog.Overlay>
-            <Dialog.Content
-              asChild
-              onOpenAutoFocus={(e) => e.preventDefault()}
-            >
+            <Dialog.Content asChild onOpenAutoFocus={(e) => e.preventDefault()}>
               <motion.div
-                initial={{ opacity: 0, scale: 0.97 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.97 }}
+                initial={{ opacity: 0, scale: 0.97, x: "-50%", y: "-50%" }}
+                animate={{ opacity: 1, scale: 1, x: "-50%", y: "-50%" }}
+                exit={{ opacity: 0, scale: 0.97, x: "-50%", y: "-50%" }}
                 transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                className="fixed top-1/2 left-1/2
                            z-50 w-[calc(100vw-32px)] sm:w-[600px]
                            max-h-[min(calc(100vh-48px),640px)]
                            bg-editor-bg border border-border rounded-[14px]
@@ -166,7 +177,11 @@ export default function SettingsDialog({
                           variants={rowStagger}
                           initial="hidden"
                           animate="visible"
-                          exit={{ opacity: 0, y: -6, transition: { duration: 0.12 } }}
+                          exit={{
+                            opacity: 0,
+                            y: -6,
+                            transition: { duration: 0.12 },
+                          }}
                         >
                           <motion.div variants={rowItem}>
                             <SettingsRow label="Theme" icon={SunMoon}>
@@ -201,13 +216,83 @@ export default function SettingsDialog({
                           </motion.div>
                           <motion.div variants={rowItem} className="pt-2">
                             <div className="flex items-center gap-2 text-[13px] font-medium text-editor-text tracking-[-0.01em] mb-2">
-                              <Type className="w-[15px] h-[15px] text-editor-text/40" strokeWidth={1.5} />
+                              <Type
+                                className="w-[15px] h-[15px] text-editor-text/40"
+                                strokeWidth={1.5}
+                              />
                               Interface font
                             </div>
                             <FontPicker
                               value={settings.uiFont}
                               onChange={(v) => onChange("uiFont", v as FontKey)}
                             />
+                          </motion.div>
+
+                          {/* Accessibility */}
+                          <motion.div variants={rowItem}>
+                            <div className="mt-6 mb-1 px-1">
+                              <span className="text-[10px] font-semibold text-sidebar-textSecondary/40 uppercase tracking-[0.08em]">
+                                Accessibility
+                              </span>
+                            </div>
+                          </motion.div>
+
+                          <motion.div variants={rowItem}>
+                            <SettingsRow
+                              label="High Contrast"
+                              description="Increase text contrast and border visibility."
+                            >
+                              <ToggleSwitch
+                                checked={settings.highContrast}
+                                onChange={(v) => onChange("highContrast", v)}
+                              />
+                            </SettingsRow>
+                          </motion.div>
+
+                          <motion.div variants={rowItem}>
+                            <SettingsRow
+                              label="Larger Text"
+                              description="Scale all text up by 20%."
+                            >
+                              <ToggleSwitch
+                                checked={settings.largerText}
+                                onChange={(v) => onChange("largerText", v)}
+                              />
+                            </SettingsRow>
+                          </motion.div>
+
+                          <motion.div variants={rowItem}>
+                            <SettingsRow
+                              label="Reduced Motion"
+                              description="Disable animations and transitions."
+                            >
+                              <ToggleSwitch
+                                checked={settings.reducedMotion}
+                                onChange={(v) => onChange("reducedMotion", v)}
+                              />
+                            </SettingsRow>
+                          </motion.div>
+
+                          {/* Integrations */}
+                          <motion.div variants={rowItem}>
+                            <div className="mt-6 mb-1 px-1">
+                              <span className="text-[10px] font-semibold text-sidebar-textSecondary/40 uppercase tracking-[0.08em]">
+                                Integrations
+                              </span>
+                            </div>
+                          </motion.div>
+
+                          <motion.div variants={rowItem}>
+                            <SettingsRow
+                              label="Discord Rich Presence"
+                              description="Show what you're working on in Discord."
+                              icon={Radio}
+                            >
+                              <ToggleSwitch
+                                checked={settings.discordRpcEnabled}
+                                onChange={(v) => onChange("discordRpcEnabled", v)}
+                              />
+                            </SettingsRow>
                           </motion.div>
                         </motion.div>
                       )}
@@ -218,11 +303,18 @@ export default function SettingsDialog({
                           variants={rowStagger}
                           initial="hidden"
                           animate="visible"
-                          exit={{ opacity: 0, y: -6, transition: { duration: 0.12 } }}
+                          exit={{
+                            opacity: 0,
+                            y: -6,
+                            transition: { duration: 0.12 },
+                          }}
                         >
                           <motion.div variants={rowItem} className="pb-3">
                             <div className="flex items-center gap-2 text-[13px] font-medium text-editor-text tracking-[-0.01em] mb-2">
-                              <Type className="w-[15px] h-[15px] text-editor-text/40" strokeWidth={1.5} />
+                              <Type
+                                className="w-[15px] h-[15px] text-editor-text/40"
+                                strokeWidth={1.5}
+                              />
                               Editor font
                             </div>
                             <FontPicker
@@ -242,7 +334,10 @@ export default function SettingsDialog({
                                   onClick={() =>
                                     onChange(
                                       "editorFontSize",
-                                      Math.max(FONT_SIZE_MIN, settings.editorFontSize - 1)
+                                      Math.max(
+                                        FONT_SIZE_MIN,
+                                        settings.editorFontSize - 1,
+                                      ),
                                     )
                                   }
                                   className="w-[24px] h-[24px] rounded-md flex items-center justify-center
@@ -251,7 +346,10 @@ export default function SettingsDialog({
                                              transition-colors duration-150"
                                   aria-label="Decrease font size"
                                 >
-                                  <Minus className="w-3 h-3" strokeWidth={1.75} />
+                                  <Minus
+                                    className="w-3 h-3"
+                                    strokeWidth={1.75}
+                                  />
                                 </button>
                                 <input
                                   type="range"
@@ -260,7 +358,10 @@ export default function SettingsDialog({
                                   step={1}
                                   value={settings.editorFontSize}
                                   onChange={(e) =>
-                                    onChange("editorFontSize", Number(e.target.value))
+                                    onChange(
+                                      "editorFontSize",
+                                      Number(e.target.value),
+                                    )
                                   }
                                   className="w-[90px] h-1.5 accent-accent"
                                 />
@@ -268,7 +369,10 @@ export default function SettingsDialog({
                                   onClick={() =>
                                     onChange(
                                       "editorFontSize",
-                                      Math.min(FONT_SIZE_MAX, settings.editorFontSize + 1)
+                                      Math.min(
+                                        FONT_SIZE_MAX,
+                                        settings.editorFontSize + 1,
+                                      ),
                                     )
                                   }
                                   className="w-[24px] h-[24px] rounded-md flex items-center justify-center
@@ -277,7 +381,10 @@ export default function SettingsDialog({
                                              transition-colors duration-150"
                                   aria-label="Increase font size"
                                 >
-                                  <Plus className="w-3 h-3" strokeWidth={1.75} />
+                                  <Plus
+                                    className="w-3 h-3"
+                                    strokeWidth={1.75}
+                                  />
                                 </button>
                                 <span className="text-[12px] font-medium text-editor-text tabular-nums w-[26px] text-center">
                                   {settings.editorFontSize}
@@ -291,7 +398,9 @@ export default function SettingsDialog({
                               <SegmentedControl
                                 ariaLabel="Line height"
                                 value={settings.editorLineHeight}
-                                onChange={(v) => onChange("editorLineHeight", v)}
+                                onChange={(v) =>
+                                  onChange("editorLineHeight", v)
+                                }
                                 options={[
                                   { value: "tight", label: "Tight" },
                                   { value: "normal", label: "Normal" },
@@ -309,7 +418,10 @@ export default function SettingsDialog({
                                 onChange={(v) => onChange("editorWidth", v)}
                                 options={[
                                   { value: "narrow", label: "Narrow" },
-                                  { value: "comfortable", label: "Comfortable" },
+                                  {
+                                    value: "comfortable",
+                                    label: "Comfortable",
+                                  },
                                   { value: "wide", label: "Wide" },
                                 ]}
                               />
@@ -324,7 +436,11 @@ export default function SettingsDialog({
                           variants={rowStagger}
                           initial="hidden"
                           animate="visible"
-                          exit={{ opacity: 0, y: -6, transition: { duration: 0.12 } }}
+                          exit={{
+                            opacity: 0,
+                            y: -6,
+                            transition: { duration: 0.12 },
+                          }}
                         >
                           <motion.div variants={rowItem}>
                             <SettingsRow
@@ -334,7 +450,9 @@ export default function SettingsDialog({
                             >
                               <ToggleSwitch
                                 checked={settings.showFolderCounts}
-                                onChange={(v) => onChange("showFolderCounts", v)}
+                                onChange={(v) =>
+                                  onChange("showFolderCounts", v)
+                                }
                               />
                             </SettingsRow>
                           </motion.div>
@@ -348,7 +466,9 @@ export default function SettingsDialog({
                               <FolderSelect
                                 folders={folders}
                                 selectedId={settings.defaultFolderId}
-                                onChange={(id) => onChange("defaultFolderId", id)}
+                                onChange={(id) =>
+                                  onChange("defaultFolderId", id)
+                                }
                               />
                             </SettingsRow>
                           </motion.div>
@@ -361,7 +481,11 @@ export default function SettingsDialog({
                           variants={rowStagger}
                           initial="hidden"
                           animate="visible"
-                          exit={{ opacity: 0, y: -6, transition: { duration: 0.12 } }}
+                          exit={{
+                            opacity: 0,
+                            y: -6,
+                            transition: { duration: 0.12 },
+                          }}
                         >
                           <motion.div variants={rowItem}>
                             <SettingsRow
@@ -417,9 +541,7 @@ function FolderSelect({
   onChange: (id: string | null) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const selected = selectedId
-    ? folders.find((f) => f.id === selectedId)
-    : null;
+  const selected = selectedId ? folders.find((f) => f.id === selectedId) : null;
 
   return (
     <div className="relative">
@@ -437,7 +559,10 @@ function FolderSelect({
           animate={{ rotate: menuOpen ? 180 : 0 }}
           transition={{ duration: 0.15, ease: "easeOut" }}
         >
-          <ChevronDown className="w-3.5 h-3.5 text-editor-text/35" strokeWidth={1.75} />
+          <ChevronDown
+            className="w-3.5 h-3.5 text-editor-text/35"
+            strokeWidth={1.75}
+          />
         </motion.div>
       </button>
       <AnimatePresence>
