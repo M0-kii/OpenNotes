@@ -13,7 +13,7 @@ interface SidebarProps {
   searchQuery: string;
   folderName: string;
   onSearchChange: (query: string) => void;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, openInSplit?: boolean) => void;
   onCreate: () => void;
   onDeleteRequest: (id: string) => void;
   onRename: (id: string, title: string) => void;
@@ -118,7 +118,7 @@ export default function Sidebar({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -12, height: 0 }}
                 transition={{ duration: 0.18, ease: "easeOut" }}
-                onClick={() => onSelect(note.id)}
+                onClick={(e) => onSelect(note.id, e.metaKey || e.ctrlKey)}
                 className={`group relative px-3 py-2.5 mx-0.5 rounded-note cursor-pointer
                             transition-colors duration-200
                             ${

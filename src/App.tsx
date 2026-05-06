@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useNotes } from "./hooks/useNotes";
 import { useFolders } from "./hooks/useFolders";
 import { useSettings } from "./hooks/useSettings";
@@ -9,7 +9,9 @@ import TitleBar from "./components/TitleBar";
 import ConfirmDialog from "./components/ConfirmDialog";
 import SettingsApplier from "./components/settings/SettingsApplier";
 import SettingsDialog from "./components/settings/SettingsDialog";
-import { getNoteCountInFolder, getNoteCountsByFolder } from "./lib/db";
+import SplitDivider from "./components/SplitDivider";
+import { getNoteCountInFolder, getNoteCountsByFolder, getNoteById } from "./lib/db";
+import type { Note } from "./types";
 
 export default function App() {
   const folders = useFolders();
@@ -57,6 +59,99 @@ export default function App() {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [noteCounts, setNoteCounts] = useState<Record<string, number>>({});
+
+  // Split-editor state. splitNoteId === null → single pane (today's UX).
+  // When set, two editors render side-by-side. activePane drives where
+  // sidebar clicks and new-note creation land.
+  const [splitNoteId, setSplitNoteId] = useState<string | null>(null);
+  const [activePane, setActivePane] = useState<"left" | "right">("left");
+  const [rightNote, setRightNote] = useState<Note | null>(null);
+  const [splitRatio, setSplitRatio] = useState<number>(() => {
+    const raw = parseFloat(localStorage.getItem("opennotes-split-ratio") || "");
+    return Number.isFinite(raw) && raw >= 0.2 && raw <= 0.8 ? raw : 0.5;
+  });
+  const editorPaneRef = useRef<HTMLDivElement>(null);
+
+  // Hydrate the right pane note whenever splitNoteId changes.
+  useEffect(() => {
+    if (!splitNoteId) {
+      setRightNote(null);
+      return;
+    }
+    let cancelled = false;
+    // Prefer the in-memory copy from the notes list (so updates flow
+    // through naturally); fall back to a DB fetch if the note is filtered
+    // out of the current view.
+    const cached = notes.find((n) => n.id === splitNoteId);
+    if (cached) {
+      setRightNote(cached);
+      return;
+    }
+    getNoteById(splitNoteId).then((n) => {
+      if (!cancelled) setRightNote(n);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [splitNoteId, notes]);
+
+  const closeSplit = useCallback(() => {
+    setSplitNoteId(null);
+    setActivePane("left");
+  }, []);
+
+  const openInSplit = useCallback((noteId: string) => {
+    setSplitNoteId(noteId);
+    setActivePane("right");
+  }, []);
+
+  const handleRightContentChange = useCallback(
+    (id: string, content: string) => {
+      saveNoteContent(id, content);
+      setRightNote((n) =>
+        n && n.id === id
+          ? { ...n, content, updated_at: new Date().toISOString() }
+          : n
+      );
+    },
+    [saveNoteContent]
+  );
+
+  const handleRightTitleChange = useCallback(
+    (id: string, title: string) => {
+      renameNote(id, title);
+      setRightNote((n) =>
+        n && n.id === id
+          ? { ...n, title, updated_at: new Date().toISOString() }
+          : n
+      );
+    },
+    [renameNote]
+  );
+
+  const handleSelectFromSidebar = useCallback(
+    (id: string, openInSplitToo?: boolean) => {
+      if (openInSplitToo) {
+        setSplitNoteId(id);
+        setActivePane("right");
+        return;
+      }
+      if (activePane === "right" && splitNoteId !== null) {
+        setSplitNoteId(id);
+      } else {
+        selectNote(id);
+      }
+    },
+    [activePane, splitNoteId, selectNote]
+  );
+
+  const handleResize = useCallback((ratio: number) => {
+    setSplitRatio(ratio);
+  }, []);
+
+  const handleResizeEnd = useCallback((ratio: number) => {
+    localStorage.setItem("opennotes-split-ratio", String(ratio));
+  }, []);
 
   // Refresh counts whenever the underlying notes list changes.
   useEffect(() => {
@@ -165,11 +260,15 @@ export default function App() {
         />
         <Sidebar
           notes={notes}
-          selectedId={selectedId}
+          selectedId={
+            activePane === "right" && splitNoteId
+              ? splitNoteId
+              : selectedId
+          }
           searchQuery={searchQuery}
           folderName={folderName}
           onSearchChange={setSearchQuery}
-          onSelect={selectNote}
+          onSelect={handleSelectFromSidebar}
           onCreate={createNote}
           onDeleteRequest={handleDeleteNoteRequest}
           onRename={renameNote}
@@ -177,11 +276,42 @@ export default function App() {
           onToggleTheme={toggleTheme}
           onOpenSettings={() => setSettingsOpen(true)}
         />
-        <Editor
-          note={selectedNote}
-          onContentChange={saveNoteContent}
-          onTitleChange={renameNote}
-        />
+        <div ref={editorPaneRef} className="flex-1 flex overflow-hidden">
+          <div
+            className="flex flex-col min-w-0 overflow-hidden"
+            style={{ flex: `${splitNoteId ? splitRatio : 1} 1 0` }}
+          >
+            <Editor
+              note={selectedNote}
+              onContentChange={saveNoteContent}
+              onTitleChange={renameNote}
+              isActive={activePane === "left" || splitNoteId === null}
+              onFocus={() => setActivePane("left")}
+            />
+          </div>
+          {splitNoteId && (
+            <>
+              <SplitDivider
+                onResize={handleResize}
+                onResizeEnd={handleResizeEnd}
+                containerRef={editorPaneRef}
+              />
+              <div
+                className="flex flex-col min-w-0 overflow-hidden"
+                style={{ flex: `${1 - splitRatio} 1 0` }}
+              >
+                <Editor
+                  note={rightNote}
+                  onContentChange={handleRightContentChange}
+                  onTitleChange={handleRightTitleChange}
+                  isActive={activePane === "right"}
+                  onFocus={() => setActivePane("right")}
+                  onClose={closeSplit}
+                />
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <ConfirmDialog
