@@ -230,7 +230,7 @@ export default function App() {
   if (isLoading) {
     return (
       <div className="h-screen w-screen flex flex-col bg-sidebar-bg">
-        <TitleBar />
+        <TitleBar style={settings.titlebarStyle} />
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <div className="w-6 h-6 border-2 border-black/[0.08] dark:border-white/[0.08] border-t-black/[0.3] dark:border-t-white/[0.25] rounded-full animate-spin" />
@@ -246,7 +246,7 @@ export default function App() {
   if (error) {
     return (
       <div className="h-screen w-screen flex flex-col bg-sidebar-bg">
-        <TitleBar />
+        <TitleBar style={settings.titlebarStyle} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md px-4">
             <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
@@ -283,7 +283,7 @@ export default function App() {
   return (
     <div className="h-screen w-screen flex flex-col bg-editor-bg overflow-hidden">
       <SettingsApplier settings={settings} />
-      <TitleBar />
+      <TitleBar style={settings.titlebarStyle} />
       <div className="flex-1 flex overflow-hidden">
         <FoldersSidebar
           folders={folders.folders}

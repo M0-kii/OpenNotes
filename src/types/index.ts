@@ -17,6 +17,8 @@ export interface Folder {
 
 export type Theme = "light" | "dark" | "system";
 
+export type TitlebarStyle = "macos" | "windows";
+
 export type FontKey =
   | "system"
   | "geist"
@@ -30,6 +32,7 @@ export type EditorWidthKey = "narrow" | "comfortable" | "wide";
 
 export interface Settings {
   theme: Theme;
+  titlebarStyle: TitlebarStyle;
   editorFont: FontKey;
   editorFontSize: number;
   editorLineHeight: LineHeightKey;
