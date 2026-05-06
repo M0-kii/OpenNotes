@@ -21,6 +21,10 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
   // Per-id queue so two editors editing different notes can't clobber
   // each other within the debounce window.
   const pendingSavesRef = useRef<Map<string, string>>(new Map());
+  // Version counter per note ID so stale flushSave callbacks can detect
+  // that a newer saveNoteContent fired during their async DB write and
+  // skip the stale setNotes call (prevents content disappearing).
+  const saveVersionRef = useRef<Map<string, number>>(new Map());
   const initialLoadDone = useRef(false);
 
   useEffect(() => {
@@ -83,10 +87,18 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
   const flushSave = useCallback(async () => {
     if (pendingSavesRef.current.size === 0) return;
     const entries = Array.from(pendingSavesRef.current.entries());
+    // Snapshot versions BEFORE clearing so we can detect saves queued
+    // during our async await below.
+    const versionsSnapshot = new Map(saveVersionRef.current);
     pendingSavesRef.current.clear();
     for (const [id, content] of entries) {
       try {
         await db.updateNoteContent(id, content);
+        // Skip setNotes if a newer saveNoteContent fired during the await
+        // (its content is already in the next timer's pendingSavesRef).
+        const currentVersion = saveVersionRef.current.get(id) ?? 0;
+        const snapshotVersion = versionsSnapshot.get(id) ?? 0;
+        if (currentVersion !== snapshotVersion) continue;
         setNotes((prev) =>
           prev.map((n) =>
             n.id === id
@@ -102,6 +114,12 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
 
   const saveNoteContent = useCallback(
     (id: string, content: string) => {
+      // Bump version so any in-flight flushSave can detect our content is
+      // newer and skip its stale setNotes call.
+      saveVersionRef.current.set(
+        id,
+        (saveVersionRef.current.get(id) ?? 0) + 1
+      );
       setNotes((prev) =>
         prev.map((n) =>
           n.id === id
