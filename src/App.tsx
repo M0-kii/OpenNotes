@@ -14,6 +14,12 @@ import { getNoteCountInFolder, getNoteCountsByFolder } from "./lib/db";
 export default function App() {
   const folders = useFolders();
   const {
+    settings,
+    isLoaded: settingsLoaded,
+    update: updateSetting,
+  } = useSettings();
+
+  const {
     notes,
     selectedNote,
     selectedId,
@@ -26,13 +32,11 @@ export default function App() {
     renameNote,
     selectNote,
     saveNoteContent,
-  } = useNotes({ folderId: folders.selectedFolderId });
+  } = useNotes({
+    folderId: folders.selectedFolderId,
+    createInFolderId: folders.selectedFolderId ?? settings.defaultFolderId,
+  });
 
-  const {
-    settings,
-    isLoaded: settingsLoaded,
-    update: updateSetting,
-  } = useSettings();
   const theme = settings.theme;
   const toggleTheme = useCallback(() => {
     const next: typeof theme =
