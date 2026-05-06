@@ -36,17 +36,24 @@ export default function SettingsDialog({
                 className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-50"
               />
             </Dialog.Overlay>
-            <Dialog.Content asChild>
+            <Dialog.Content
+              asChild
+              onOpenAutoFocus={(e) => e.preventDefault()}
+            >
               <motion.div
                 initial={{ opacity: 0, scale: 0.98, y: 8 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98, y: 4 }}
                 transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2
-                           w-[560px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-64px)]
-                           bg-editor-bg border border-border rounded-[14px]
-                           shadow-2xl overflow-hidden flex flex-col z-50"
+                className="fixed inset-0 z-50 flex items-center justify-center
+                           p-4 sm:p-6 pointer-events-none"
               >
+                <div
+                  className="pointer-events-auto w-full max-w-[560px]
+                             max-h-[min(720px,calc(100vh-32px))]
+                             bg-editor-bg border border-border rounded-[14px]
+                             shadow-2xl overflow-hidden flex flex-col"
+                >
                 <div className="flex items-center justify-between px-5 py-3 border-b border-border">
                   <Dialog.Title className="text-[14px] font-semibold text-editor-text tracking-[-0.01em]">
                     Settings
@@ -173,6 +180,7 @@ export default function SettingsDialog({
 
                 <div className="px-5 py-2.5 border-t border-border text-[11px] text-editor-text/35 tracking-[-0.005em]">
                   Changes are saved automatically.
+                </div>
                 </div>
               </motion.div>
             </Dialog.Content>
