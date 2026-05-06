@@ -6,9 +6,12 @@ import { generateId } from "../lib/utils";
 interface UseNotesOptions {
   // null = All Notes (no folder filter)
   folderId: string | null;
+  // Where to put new notes when folderId is null. If null too, lib/db.ts
+  // falls back to the default folder.
+  createInFolderId?: string | null;
 }
 
-export function useNotes({ folderId }: UseNotesOptions) {
+export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -113,15 +116,16 @@ export function useNotes({ folderId }: UseNotesOptions) {
   const createNote = useCallback(async () => {
     await flushSave();
     const id = generateId();
+    const targetFolderId = folderId ?? createInFolderId ?? null;
     try {
-      const note = await db.createNote(id, folderId);
+      const note = await db.createNote(id, targetFolderId);
       setNotes((prev) => [note, ...prev]);
       setSelectedId(id);
       setSearchQuery("");
     } catch (e) {
       console.error("Failed to create note:", e);
     }
-  }, [flushSave, folderId]);
+  }, [flushSave, folderId, createInFolderId]);
 
   const deleteNote = useCallback(
     async (id: string) => {
