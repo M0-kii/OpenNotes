@@ -62,7 +62,6 @@ src-tauri/
 
 - **Commit per logical change.** One concern per commit. "Add SQLite client + migrations" and "Add notes repo" are two commits, not one. Never bundle scaffold + behavior + style in a single commit.
 - **Commit message style:** lowercase imperative subject, ≤72 chars. Body explains *why*. Co-author trailer for Claude work.
-- **Never push to `main`.** Always feature branch + PR. The harness enforces this.
 - **No raw color literals** in components — no `text-white`, `bg-black`, `bg-blue-500`, no hex, no rgb. Colors come from `tokens.css` via Tailwind's `@theme` mapping. Components consume tokens.
 - **No external rich-text editors** (TipTap / Slate / Quill / Lexical). The editor is custom contenteditable. Per `Overview.md`, this is non-negotiable.
 - **SQLite is source of truth.** Never let UI state diverge — write to DB first, then update store.
