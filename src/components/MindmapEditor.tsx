@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ZoomIn, ZoomOut, Maximize } from "lucide-react";
 import type { Note, MindmapNode, MindmapData, MindmapLayout } from "../types";
 import { generateId } from "../lib/utils";
 
@@ -81,13 +81,16 @@ function layoutChildren(
 function getConnectionPath(
   parent: MindmapNode,
   child: MindmapNode,
-  layout: MindmapLayout
+  layout: MindmapLayout,
+  zoom: number
 ): string {
   const isTopDown = layout === "top-down";
+  const zoomedW = NODE_W * zoom;
+  const zoomedH = NODE_H * zoom;
   const px = parent.x;
-  const py = isTopDown ? parent.y + NODE_H / 2 : parent.y;
-  const cx = isTopDown ? child.x : child.x - NODE_W / 2 - 16;
-  const cy = isTopDown ? child.y - NODE_H / 2 - 8 : child.y;
+  const py = isTopDown ? parent.y + zoomedH / 2 : parent.y;
+  const cx = isTopDown ? child.x : child.x - zoomedW / 2 - 16 * zoom;
+  const cy = isTopDown ? child.y - zoomedH / 2 - 8 * zoom : child.y;
 
   const midY = (py + cy) / 2;
   const midX = (px + cx) / 2;
@@ -114,7 +117,7 @@ export default function MindmapEditor({
   const [isPanning, setIsPanning] = useState(false);
   const panStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const editInputRef = useRef<HTMLInputElement | null>(null);
-  const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const dataRef = useRef<MindmapData>(emptyMindmap());
   const noteIdRef = useRef<string | null>(null);
 
   const persist = useCallback(
@@ -129,12 +132,19 @@ export default function MindmapEditor({
     if (!note) {
       noteIdRef.current = null;
       setData(emptyMindmap());
+      dataRef.current = emptyMindmap();
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
       return;
     }
     noteIdRef.current = note.id;
-    setData(parseData(note.content));
+    const parsed = parseData(note.content);
+    setData(parsed);
+    dataRef.current = parsed;
     setSelectedNodeId(null);
     setEditingNodeId(null);
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
   }, [note]);
 
   useEffect(() => {
@@ -218,6 +228,7 @@ export default function MindmapEditor({
 
   const handleDeleteNode = useCallback(
     (nodeId: string) => {
+      const deletedNode = data.nodes.find((n) => n.id === nodeId);
       const toDelete = new Set<string>();
       const collect = (id: string) => {
         toDelete.add(id);
@@ -226,13 +237,29 @@ export default function MindmapEditor({
           .forEach((c) => collect(c.id));
       };
       collect(nodeId);
-      const newData = { nodes: data.nodes.filter((n) => !toDelete.has(n.id)) };
+
+      let newNodes = data.nodes.filter((n) => !toDelete.has(n.id));
+
+      // Re-layout remaining siblings of the deleted node's parent
+      if (deletedNode?.parentId) {
+        const parent = newNodes.find((n) => n.id === deletedNode.parentId);
+        const remainingChildren = newNodes.filter((n) => n.parentId === deletedNode.parentId);
+        if (parent && remainingChildren.length > 0) {
+          const reLaidOut = layoutChildren(parent, remainingChildren, layout);
+          newNodes = newNodes.map((n) => {
+            const updated = reLaidOut.find((r) => r.id === n.id);
+            return updated ? { ...n, x: updated.x, y: updated.y } : n;
+          });
+        }
+      }
+
+      const newData = { nodes: newNodes };
       setData(newData);
       persist(newData);
       setSelectedNodeId(null);
       setEditingNodeId(null);
     },
-    [data, persist]
+    [data, layout, persist]
   );
 
   const handleNodeDrag = useCallback(
@@ -241,15 +268,17 @@ export default function MindmapEditor({
         const newNodes = prev.nodes.map((n) =>
           n.id === nodeId ? { ...n, x: n.x + dx / zoom, y: n.y + dy / zoom } : n
         );
-        return { nodes: newNodes };
+        const newData = { nodes: newNodes };
+        dataRef.current = newData;
+        return newData;
       });
     },
     [zoom]
   );
 
   const handleNodeDragEnd = useCallback(() => {
-    persist(data);
-  }, [data, persist]);
+    persist(dataRef.current);
+  }, [persist]);
 
   const handleConfirmEdit = useCallback(() => {
     if (!editingNodeId) return;
@@ -270,6 +299,9 @@ export default function MindmapEditor({
         e.preventDefault();
         const delta = e.deltaY > 0 ? 0.9 : 1.1;
         setZoom((z) => Math.max(0.2, Math.min(3, z * delta)));
+      } else {
+        e.preventDefault();
+        setPan((p) => ({ x: p.x - e.deltaX, y: p.y - e.deltaY }));
       }
     },
     []
@@ -342,6 +374,38 @@ export default function MindmapEditor({
         />
       </div>
 
+      {nodes.length > 0 && (
+        <div className="px-10 pb-2 flex items-center gap-1.5">
+          <span className="text-[11px] text-editor-text/35 tracking-[-0.01em] tabular-nums">
+            {Math.round(zoom * 100)}%
+          </span>
+          <button
+            onClick={() => setZoom((z) => Math.max(0.2, z / 1.2))}
+            className="p-1 rounded-md text-editor-text/30 hover:text-editor-text/60
+                       hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
+            title="Zoom out"
+          >
+            <ZoomOut className="w-3.5 h-3.5" strokeWidth={1.5} />
+          </button>
+          <button
+            onClick={() => setZoom((z) => Math.min(3, z * 1.2))}
+            className="p-1 rounded-md text-editor-text/30 hover:text-editor-text/60
+                       hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
+            title="Zoom in"
+          >
+            <ZoomIn className="w-3.5 h-3.5" strokeWidth={1.5} />
+          </button>
+          <button
+            onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
+            className="p-1 rounded-md text-editor-text/30 hover:text-editor-text/60
+                       hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors ml-0.5"
+            title="Reset zoom & pan"
+          >
+            <Maximize className="w-3.5 h-3.5" strokeWidth={1.5} />
+          </button>
+        </div>
+      )}
+
       <div
         ref={containerRef}
         className="flex-1 relative overflow-hidden cursor-grab"
@@ -361,7 +425,8 @@ export default function MindmapEditor({
             const d = getConnectionPath(
               { ...parent, x: parent.x * zoom + pan.x, y: parent.y * zoom + pan.y },
               { ...node, x: node.x * zoom + pan.x, y: node.y * zoom + pan.y },
-              layout
+              layout,
+              zoom
             );
             return (
               <path
@@ -504,14 +569,14 @@ function MindmapNodeView({
               if (e.key === "Enter") onConfirmEdit();
               if (e.key === "Escape") onCancelEdit();
             }}
-            className="w-[90%] text-center bg-transparent text-[12px] text-editor-text
+            className="w-[90%] text-center bg-transparent text-[13px] text-editor-text
                        outline-none font-medium tracking-[-0.01em]"
             spellCheck={false}
             autoFocus
           />
         ) : (
           <span
-            className="text-[12px] text-editor-text/80 font-medium tracking-[-0.01em]
+            className="text-[13px] text-editor-text/80 font-medium tracking-[-0.01em]
                        text-center px-2 overflow-hidden text-ellipsis whitespace-nowrap"
           >
             {node.text || "New node"}
