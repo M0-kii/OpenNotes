@@ -1,4 +1,5 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileText, GitBranch } from "lucide-react";
 
@@ -18,6 +19,17 @@ export default function NoteTypePopup({
   buttonRef,
 }: Props) {
   const popupRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+
+  // Compute fixed position from the + button's viewport rect
+  useEffect(() => {
+    if (open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setPosition({ top: rect.bottom + 4, left: rect.left });
+    } else {
+      setPosition(null);
+    }
+  }, [open, buttonRef]);
 
   useEffect(() => {
     if (!open) return;
@@ -34,7 +46,9 @@ export default function NoteTypePopup({
     return () => window.removeEventListener("mousedown", handler);
   }, [open, onClose, buttonRef]);
 
-  return (
+  if (!open || !position) return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -43,7 +57,12 @@ export default function NoteTypePopup({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: -4 }}
           transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
-          className="absolute top-full left-0 mt-1 z-50 min-w-[140px]
+          style={{
+            position: "fixed",
+            top: position.top,
+            left: position.left,
+          }}
+          className="z-[9999] min-w-[140px]
                      rounded-[10px] glass border border-border
                      shadow-[0_8px_32px_rgba(0,0,0,0.18)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]
                      backdrop-blur-xl py-1 overflow-hidden"
@@ -74,6 +93,7 @@ export default function NoteTypePopup({
           </button>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
