@@ -1,0 +1,23 @@
+/*
+ * Bundled font stacks for the settings font picker.
+ * Each fontsource-variable package ships its own @font-face via its index.css,
+ * imported in main.tsx. This file declares display behavior that fontsource
+ * doesn't set — avoids FOIT on cold boot.
+ */
+
+@font-face {
+  font-family: "Geist Variable";
+  font-display: swap;
+}
+@font-face {
+  font-family: "Heebo Variable";
+  font-display: swap;
+}
+@font-face {
+  font-family: "Lora Variable";
+  font-display: swap;
+}
+@font-face {
+  font-family: "Fraunces Variable";
+  font-display: swap;
+}
