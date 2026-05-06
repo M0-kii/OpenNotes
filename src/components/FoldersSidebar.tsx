@@ -49,6 +49,7 @@ export default function FoldersSidebar({
   const [hoveredFolderId, setHoveredFolderId] = useState<string | null>(null);
   const [hoveredAllNotes, setHoveredAllNotes] = useState(false);
   const [hoveredNewFolder, setHoveredNewFolder] = useState(false);
+  const [hoveredSettings, setHoveredSettings] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -627,6 +628,8 @@ export default function FoldersSidebar({
         <motion.button
           type="button"
           onClick={onOpenSettings}
+          onMouseEnter={() => setHoveredSettings(true)}
+          onMouseLeave={() => setHoveredSettings(false)}
           className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-note text-left
                      transition-colors duration-200
                      text-sidebar-textSecondary
@@ -638,7 +641,15 @@ export default function FoldersSidebar({
           }}
           whileTap={{ scale: 0.96 }}
         >
-          <Settings className="w-[14px] h-[14px] shrink-0" strokeWidth={1.5} />
+          <motion.div
+            animate={{
+              scale: hoveredSettings ? 1.2 : 1,
+              rotate: hoveredSettings ? 90 : 0,
+            }}
+            transition={{ type: "spring", stiffness: 400, damping: 15 }}
+          >
+            <Settings className="w-[14px] h-[14px] shrink-0" strokeWidth={1.5} />
+          </motion.div>
           <AnimatePresence mode="wait">
             {!collapsed && (
               <motion.span

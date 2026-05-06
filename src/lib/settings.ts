@@ -1,12 +1,19 @@
 import type {
   Settings,
+  TitlebarStyle,
   FontKey,
   LineHeightKey,
   EditorWidthKey,
 } from "../types";
 
+const detectedPlatform: TitlebarStyle =
+  typeof navigator !== "undefined" && navigator.platform?.includes("Mac")
+    ? "macos"
+    : "windows";
+
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
+  titlebarStyle: detectedPlatform,
   editorFont: "system",
   editorFontSize: 16,
   editorLineHeight: "normal",
@@ -85,6 +92,10 @@ export function coerceSetting<K extends keyof Settings>(
   switch (key) {
     case "theme":
       return (raw === "light" || raw === "dark" || raw === "system"
+        ? raw
+        : fallback) as Settings[K];
+    case "titlebarStyle":
+      return (raw === "macos" || raw === "windows"
         ? raw
         : fallback) as Settings[K];
     case "editorFont":
