@@ -47,7 +47,7 @@ export type FontKey =
 export type LineHeightKey = "tight" | "normal" | "relaxed";
 export type EditorWidthKey = "narrow" | "comfortable" | "wide";
 
-export type MindmapLayout = "top-down" | "left-right";
+export type MindmapLayout = "top-down" | "left-right" | "radial";
 
 export interface Settings {
   theme: Theme;

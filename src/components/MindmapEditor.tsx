@@ -101,6 +101,16 @@ function getConnectionPath(
   return `M ${px} ${py} C ${midX} ${py}, ${midX} ${cy}, ${cx} ${cy}`;
 }
 
+function getDepth(nodeId: string, nodes: MindmapNode[]): number {
+  let depth = 0;
+  let current = nodes.find((n) => n.id === nodeId);
+  while (current?.parentId) {
+    depth++;
+    current = nodes.find((n) => n.id === current!.parentId);
+  }
+  return depth;
+}
+
 export default function MindmapEditor({
   note,
   layout,
