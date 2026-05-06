@@ -39,13 +39,6 @@ export default function App() {
     createInFolderId: folders.selectedFolderId ?? settings.defaultFolderId,
   });
 
-  const theme = settings.theme;
-  const toggleTheme = useCallback(() => {
-    const next: typeof theme =
-      theme === "dark" ? "light" : theme === "light" ? "system" : "dark";
-    updateSetting("theme", next);
-  }, [theme, updateSetting]);
-
   const [pendingDelete, setPendingDelete] = useState<{
     id: string;
     name: string;
@@ -305,6 +298,7 @@ export default function App() {
           }}
           onRenameFolder={folders.renameFolder}
           onDeleteFolderRequest={handleDeleteFolderRequest}
+          onOpenSettings={() => setSettingsOpen(true)}
         />
         <Sidebar
           notes={notes}
@@ -320,9 +314,6 @@ export default function App() {
           onCreate={createNote}
           onDeleteRequest={handleDeleteNoteRequest}
           onRename={renameNote}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-          onOpenSettings={() => setSettingsOpen(true)}
         />
         <div ref={editorPaneRef} className="flex-1 flex overflow-hidden">
           <div
