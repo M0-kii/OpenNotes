@@ -5,6 +5,7 @@ import type { Note } from "../types";
 import SearchBar from "./SearchBar";
 import GenericContextMenu from "./ui/GenericContextMenu";
 import InputContextMenu from "./ui/InputContextMenu";
+import NoteTypePopup from "./ui/NoteTypePopup";
 import { formatDate, getNotePreview } from "../lib/utils";
 import {
   DndContext,
@@ -29,6 +30,7 @@ interface SidebarProps {
   onSearchChange: (query: string) => void;
   onSelect: (id: string, openInSplit?: boolean) => void;
   onCreate: () => void;
+  onCreateMindmap: () => void;
   onDeleteRequest: (id: string) => void;
   onRename: (id: string, title: string) => void;
   onReorder: (orderedIds: string[]) => void;
@@ -42,12 +44,15 @@ export default function Sidebar({
   onSearchChange,
   onSelect,
   onCreate,
+  onCreateMindmap,
   onDeleteRequest,
   onRename,
   onReorder,
 }: SidebarProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [popupOpen, setPopupOpen] = useState(false);
+  const plusButtonRef = useRef<HTMLButtonElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(
@@ -104,17 +109,27 @@ export default function Sidebar({
           {folderName}
         </h1>
         <div className="flex items-center gap-1">
-          <motion.button
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.92 }}
-            onClick={onCreate}
-            className="p-1.5 rounded-btn text-sidebar-textSecondary
-                       hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
-                       transition-colors duration-150"
-            title="New note"
-          >
-            <Plus className="w-[15px] h-[15px]" />
-          </motion.button>
+          <div className="relative">
+            <motion.button
+              ref={plusButtonRef}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              onClick={() => setPopupOpen((o) => !o)}
+              className="p-1.5 rounded-btn text-sidebar-textSecondary
+                         hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
+                         transition-colors duration-150"
+              title="New note or mind map"
+            >
+              <Plus className="w-[15px] h-[15px]" />
+            </motion.button>
+            <NoteTypePopup
+              open={popupOpen}
+              onClose={() => setPopupOpen(false)}
+              onNote={onCreate}
+              onMindmap={onCreateMindmap}
+              buttonRef={plusButtonRef}
+            />
+          </div>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Note } from "../types";
+import type { Note, NoteType } from "../types";
 import * as db from "../lib/db";
 import { generateId } from "../lib/utils";
 
@@ -116,12 +116,12 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
     [flushSave]
   );
 
-  const createNote = useCallback(async () => {
+  const createNote = useCallback(async (noteType: NoteType = "note") => {
     await flushSave();
     const id = generateId();
     const targetFolderId = folderId ?? createInFolderId ?? null;
     try {
-      const note = await db.createNote(id, targetFolderId);
+      const note = await db.createNote(id, targetFolderId, noteType);
       setNotes((prev) => [note, ...prev]);
       setSelectedId(id);
       setSearchQuery("");
