@@ -9,7 +9,7 @@ import TitleBar from "./components/TitleBar";
 import ConfirmDialog from "./components/ConfirmDialog";
 import SettingsApplier from "./components/settings/SettingsApplier";
 import SettingsDialog from "./components/settings/SettingsDialog";
-import { getNoteCountInFolder } from "./lib/db";
+import { getNoteCountInFolder, getNoteCountsByFolder } from "./lib/db";
 
 export default function App() {
   const folders = useFolders();
@@ -52,6 +52,20 @@ export default function App() {
   } | null>(null);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [noteCounts, setNoteCounts] = useState<Record<string, number>>({});
+
+  // Refresh counts whenever the underlying notes list changes.
+  useEffect(() => {
+    let cancelled = false;
+    getNoteCountsByFolder().then((counts) => {
+      if (!cancelled) setNoteCounts(counts);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [notes]);
+
+  const totalNoteCount = Object.values(noteCounts).reduce((a, b) => a + b, 0);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -135,6 +149,9 @@ export default function App() {
           folders={folders.folders}
           selectedFolderId={folders.selectedFolderId}
           defaultFolderId={folders.defaultFolderId}
+          noteCounts={noteCounts}
+          totalNoteCount={totalNoteCount}
+          showFolderCounts={settings.showFolderCounts}
           onSelectFolder={folders.selectFolder}
           onCreateFolder={(name) => {
             folders.createFolder(name);
