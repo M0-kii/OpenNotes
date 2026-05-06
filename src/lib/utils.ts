@@ -1,3 +1,5 @@
+import type { NoteType, MindmapData } from "../types";
+
 export function generateId(): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 10);
@@ -24,8 +26,22 @@ export function formatDate(isoString: string): string {
   });
 }
 
-export function getNotePreview(content: string, maxLength = 80): string {
-  const text = content.replace(/\s+/g, " ").trim();
+export function getNotePreview(content: string, noteType: NoteType, maxLength = 80): string {
+  let text: string;
+  if (noteType === "mindmap") {
+    try {
+      const data: MindmapData = JSON.parse(content);
+      text = data.nodes
+        .filter((n) => n.text)
+        .map((n) => n.text)
+        .join(" · ") || "Empty mind map";
+    } catch {
+      text = content;
+    }
+  } else {
+    text = content;
+  }
+  text = text.replace(/\s+/g, " ").trim();
   if (text.length <= maxLength) return text || "No content";
   return text.substring(0, maxLength) + "…";
 }

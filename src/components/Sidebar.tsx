@@ -315,7 +315,7 @@ function SortableNoteItem({
                     {note.title || "Untitled"}
                   </div>
                   <div className="text-[11px] text-sidebar-textSecondary/60 truncate mt-0.5 leading-relaxed">
-                    {getNotePreview(note.content, 60)}
+                    {getNotePreview(note.content, note.note_type, 60)}
                   </div>
                   <div className="text-[10px] text-sidebar-textSecondary/40 mt-1 tracking-[-0.01em]">
                     {formatDate(note.updated_at)}
