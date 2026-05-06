@@ -33,6 +33,7 @@ export type EditorWidthKey = "narrow" | "comfortable" | "wide";
 export interface Settings {
   theme: Theme;
   titlebarStyle: TitlebarStyle;
+  uiFont: FontKey;
   editorFont: FontKey;
   editorFontSize: number;
   editorLineHeight: LineHeightKey;

@@ -14,6 +14,7 @@ const detectedPlatform: TitlebarStyle =
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   titlebarStyle: detectedPlatform,
+  uiFont: "system",
   editorFont: "system",
   editorFontSize: 16,
   editorLineHeight: "normal",
@@ -98,6 +99,7 @@ export function coerceSetting<K extends keyof Settings>(
       return (raw === "macos" || raw === "windows"
         ? raw
         : fallback) as Settings[K];
+    case "uiFont":
     case "editorFont":
       return (FONT_OPTIONS.some((f) => f.key === raw)
         ? raw

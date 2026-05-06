@@ -6,6 +6,7 @@ import {
   Palette,
   PencilLine,
   Folder as FolderIcon,
+  Github,
   SunMoon,
   Monitor,
   Type,
@@ -18,7 +19,7 @@ import {
   Plus,
   ChevronDown,
 } from "lucide-react";
-import type { Settings, Folder, TitlebarStyle } from "../../types";
+import type { Settings, Folder, TitlebarStyle, FontKey } from "../../types";
 import { FONT_SIZE_MAX, FONT_SIZE_MIN } from "../../lib/settings";
 import SettingsRow from "./SettingsRow";
 import SegmentedControl from "./SegmentedControl";
@@ -64,6 +65,7 @@ export default function SettingsDialog({
   onChange,
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("appearance");
+  const activeLabel = TABS.find((t) => t.id === activeTab)?.label ?? "";
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -88,17 +90,22 @@ export default function SettingsDialog({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.97, y: 8 }}
                 transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                className="fixed inset-0 z-50 grid place-items-center p-4 sm:p-6 pointer-events-none"
+                layout
+                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                           z-50 w-[calc(100vw-32px)] sm:w-[600px]
+                           max-h-[min(calc(100vh-48px),640px)]
+                           bg-editor-bg border border-border rounded-[14px]
+                           shadow-2xl overflow-hidden flex flex-col"
               >
-                <div
-                  className="pointer-events-auto w-[600px] max-w-full
-                             max-h-[min(640px,calc(100vh-48px))]
-                             bg-editor-bg border border-border rounded-[14px]
-                             shadow-2xl overflow-hidden flex flex-col"
-                >
                 <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
-                  <Dialog.Title className="text-[14px] font-semibold text-editor-text tracking-[-0.01em]">
-                    Settings
+                  <Dialog.Title className="flex items-baseline gap-1.5 text-[14px] font-semibold text-editor-text tracking-[-0.01em]">
+                    <span>Settings</span>
+                    <span className="text-editor-text/30 font-normal text-[13px]">
+                      →
+                    </span>
+                    <span className="text-editor-text/50 font-normal">
+                      {activeLabel}
+                    </span>
                   </Dialog.Title>
                   <Dialog.Close asChild>
                     <button
@@ -113,7 +120,7 @@ export default function SettingsDialog({
 
                 <div className="flex flex-1 overflow-hidden min-h-0">
                   {/* Tab sidebar */}
-                  <div className="w-[160px] shrink-0 border-r border-border p-2 flex flex-col gap-0.5">
+                  <div className="w-[150px] shrink-0 border-r border-border p-2 flex flex-col gap-0.5">
                     {TABS.map((tab, i) => {
                       const isActive = tab.id === activeTab;
                       return (
@@ -158,7 +165,7 @@ export default function SettingsDialog({
                           variants={rowStagger}
                           initial="hidden"
                           animate="visible"
-                          exit={{ opacity: 0, y: -6 }}
+                          exit={{ opacity: 0, y: -6, transition: { duration: 0.12 } }}
                         >
                           <motion.div variants={rowItem}>
                             <SettingsRow label="Theme" icon={SunMoon}>
@@ -191,6 +198,16 @@ export default function SettingsDialog({
                               />
                             </SettingsRow>
                           </motion.div>
+                          <motion.div variants={rowItem} className="pt-2">
+                            <div className="flex items-center gap-2 text-[13px] font-medium text-editor-text tracking-[-0.01em] mb-2">
+                              <Type className="w-[15px] h-[15px] text-editor-text/40" strokeWidth={1.5} />
+                              Interface font
+                            </div>
+                            <FontPicker
+                              value={settings.uiFont}
+                              onChange={(v) => onChange("uiFont", v as FontKey)}
+                            />
+                          </motion.div>
                         </motion.div>
                       )}
 
@@ -200,12 +217,12 @@ export default function SettingsDialog({
                           variants={rowStagger}
                           initial="hidden"
                           animate="visible"
-                          exit={{ opacity: 0, y: -6 }}
+                          exit={{ opacity: 0, y: -6, transition: { duration: 0.12 } }}
                         >
                           <motion.div variants={rowItem} className="pb-3">
                             <div className="flex items-center gap-2 text-[13px] font-medium text-editor-text tracking-[-0.01em] mb-2">
                               <Type className="w-[15px] h-[15px] text-editor-text/40" strokeWidth={1.5} />
-                              Font
+                              Editor font
                             </div>
                             <FontPicker
                               value={settings.editorFont}
@@ -306,7 +323,7 @@ export default function SettingsDialog({
                           variants={rowStagger}
                           initial="hidden"
                           animate="visible"
-                          exit={{ opacity: 0, y: -6 }}
+                          exit={{ opacity: 0, y: -6, transition: { duration: 0.12 } }}
                         >
                           <motion.div variants={rowItem}>
                             <SettingsRow
@@ -340,9 +357,17 @@ export default function SettingsDialog({
                   </div>
                 </div>
 
-                <div className="px-5 py-2.5 border-t border-border text-[11px] text-editor-text/35 tracking-[-0.005em] shrink-0">
-                  Changes are saved automatically.
-                </div>
+                <div className="flex items-center justify-between px-5 py-2.5 border-t border-border text-[11px] text-editor-text/35 tracking-[-0.005em] shrink-0">
+                  <span>Changes are saved automatically.</span>
+                  <a
+                    href="https://github.com/M0-kii/OpenNotes"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-editor-text/25 hover:text-editor-text/50 transition-colors duration-150"
+                    aria-label="OpenNotes on GitHub"
+                  >
+                    <Github className="w-[14px] h-[14px]" strokeWidth={1.75} />
+                  </a>
                 </div>
               </motion.div>
             </Dialog.Content>
