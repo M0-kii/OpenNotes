@@ -57,3 +57,9 @@ pids
 debug.log
 TODO.md
 .aider*
+
+# Claude Code runtime metadata
+.claude/
+
+# Tauri auto-generated bindings
+src-tauri/gen/
