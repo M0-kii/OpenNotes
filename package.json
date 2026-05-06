@@ -10,8 +10,13 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "^5.2.9",
+    "@fontsource-variable/geist": "^5.2.8",
+    "@fontsource-variable/heebo": "^5.2.8",
+    "@fontsource-variable/lora": "^5.2.8",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-context-menu": "^2.2.16",
+    "@radix-ui/react-dialog": "^1.1.15",
     "@tauri-apps/api": "^2.2.0",
     "@tauri-apps/plugin-sql": "^2.2.0",
     "framer-motion": "^12.38.0",
