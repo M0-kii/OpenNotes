@@ -23,6 +23,10 @@ export const DEFAULT_SETTINGS: Settings = {
   showFolderCounts: true,
   defaultFolderId: null,
   mindmapLayout: "top-down",
+  discordRpcEnabled: false,
+  highContrast: false,
+  largerText: false,
+  reducedMotion: false,
 };
 
 export const FONT_SIZE_MIN = 12;
@@ -130,6 +134,11 @@ export function coerceSetting<K extends keyof Settings>(
       return (raw === "top-down" || raw === "left-right"
         ? raw
         : fallback) as Settings[K];
+    case "discordRpcEnabled":
+    case "highContrast":
+    case "largerText":
+    case "reducedMotion":
+      return (typeof raw === "boolean" ? raw : fallback) as Settings[K];
     default:
       return fallback;
   }
