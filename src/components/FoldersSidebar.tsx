@@ -6,6 +6,7 @@ import {
   Folder,
   FolderPlus,
   Folders,
+  GripVertical,
   Pencil,
   Settings,
   Trash2,
@@ -13,6 +14,20 @@ import {
 } from "lucide-react";
 import type { Folder as FolderType } from "../types";
 import GenericContextMenu from "./ui/GenericContextMenu";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface FoldersSidebarProps {
   folders: FolderType[];
@@ -25,6 +40,7 @@ interface FoldersSidebarProps {
   onCreateFolder: (name: string) => void;
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolderRequest: (id: string) => void;
+  onReorderFolders: (orderedIds: string[]) => void;
   onOpenSettings: () => void;
 }
 
@@ -41,6 +57,7 @@ export default function FoldersSidebar({
   onCreateFolder,
   onRenameFolder,
   onDeleteFolderRequest,
+  onReorderFolders,
   onOpenSettings,
 }: FoldersSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -52,6 +69,22 @@ export default function FoldersSidebar({
   const [hoveredNewFolder, setHoveredNewFolder] = useState(false);
   const [hoveredSettings, setHoveredSettings] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = folders.findIndex((f) => f.id === active.id);
+    const newIndex = folders.findIndex((f) => f.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = [...folders];
+    const [moved] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, moved);
+    onReorderFolders(reordered.map((f) => f.id));
+  };
 
   useEffect(() => {
     if (renamingId && renameInputRef.current) {
@@ -322,160 +355,44 @@ export default function FoldersSidebar({
         {/* Folder list */}
         <div className="px-1.5 pb-2 space-y-px">
           <AnimatePresence initial={false}>
-            {folders.map((folder) => {
-              const isSelected = folder.id === selectedFolderId;
-              const isRenaming =
-                folder.id === renamingId && !isRenamingCollapsed;
-              const isDefault = folder.id === defaultFolderId;
-              const isHovered = hoveredFolderId === folder.id;
-              return (
-                <motion.div
-                  key={folder.id}
-                  layout
-                  initial={{ opacity: 0, x: -16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -16, height: 0 }}
-                  transition={{
-                    duration: 0.2,
-                    ease: [0.4, 0, 0.2, 1],
-                    layout: { duration: 0.25, ease: [0.4, 0, 0.2, 1] },
-                  }}
-                >
-                  <GenericContextMenu
-                    items={[
-                      {
-                        label: "Rename",
-                        icon: Pencil,
-                        onClick: () => startRename(folder),
-                      },
-                      ...(isDefault
-                        ? []
-                        : [
-                            {
-                              label: "Delete" as const,
-                              icon: Trash2,
-                              onClick: () => onDeleteFolderRequest(folder.id),
-                              destructive: true as const,
-                            },
-                          ]),
-                    ]}
-                  >
-                    <motion.div
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.98 }}
-                      onMouseEnter={() => setHoveredFolderId(folder.id)}
-                      onMouseLeave={() => setHoveredFolderId(null)}
-                      onClick={() => !isRenaming && onSelectFolder(folder.id)}
-                      className={`group relative flex items-center gap-2 px-2.5 py-1.5 rounded-note cursor-pointer
-                                  transition-colors duration-200
-                                  ${collapsed ? "justify-center px-0" : ""}
-                                  ${
-                                    isSelected
-                                      ? "bg-black/[0.05] dark:bg-white/[0.06]"
-                                      : "hover:bg-black/[0.025] dark:hover:bg-white/[0.025]"
-                                  }`}
-                      title={collapsed ? folder.name : undefined}
-                    >
-                  <motion.div
-                    animate={{
-                      ...(isSelected && !isHovered
-                        ? {
-                            scale: [1, 1.15, 1],
-                            rotate: [0, -8, 0],
-                          }
-                        : {}),
-                      scale: isHovered ? 1.2 : 1,
-                      rotate: isHovered ? 10 : 0,
-                    }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 400,
-                      damping: 15,
-                    }}
-                  >
-                    <Folder
-                      className={`w-[14px] h-[14px] shrink-0 ${
-                        isSelected
-                          ? "text-accent"
-                          : "text-sidebar-textSecondary"
-                      }`}
-                      strokeWidth={1.5}
-                    />
-                  </motion.div>
-                  {isRenaming ? (
-                    renameForm
-                  ) : (
-                    <>
-                      <AnimatePresence mode="wait">
-                        {!collapsed && (
-                          <motion.span
-                            key="folder-name"
-                            initial={{ opacity: 0, x: -6 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -6 }}
-                            transition={{
-                              duration: 0.2,
-                              ease: [0.4, 0, 0.2, 1],
-                            }}
-                            className="flex-1 text-[12px] font-medium text-sidebar-text tracking-[-0.01em] truncate"
-                          >
-                            {folder.name}
-                          </motion.span>
-                        )}
-                      </AnimatePresence>
-                      {!collapsed &&
-                        showFolderCounts &&
-                        !isHovered &&
-                        (noteCounts[folder.id] ?? 0) > 0 && (
-                          <span className="text-[11px] tabular-nums text-sidebar-textSecondary/55 tracking-[-0.005em]">
-                            {noteCounts[folder.id]}
-                          </span>
-                        )}
-                      <AnimatePresence>
-                        {!collapsed && (
-                          <motion.div
-                            initial={false}
-                            animate={{ opacity: 0 }}
-                            whileHover={{ opacity: 1 }}
-                            className="flex items-center gap-0.5"
-                          >
-                            <motion.button
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              onClick={(e) => startRename(folder, e)}
-                              className="p-1 rounded-md hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
-                                         text-sidebar-textSecondary/50 hover:text-sidebar-textSecondary
-                                         transition-colors"
-                              title="Rename"
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </motion.button>
-                            {!isDefault && (
-                              <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onDeleteFolderRequest(folder.id);
-                                }}
-                                className="p-1 rounded-md hover:bg-red-500/[0.08]
-                                           text-sidebar-textSecondary/40 hover:text-red-400
-                                           transition-colors"
-                                title="Delete folder"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </motion.button>
-                            )}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </>
-                  )}
-                </motion.div>
-                  </GenericContextMenu>
-                </motion.div>
-              );
-            })}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={folders.map((f) => f.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {folders.map((folder) => (
+                  <SortableFolderItem
+                    key={folder.id}
+                    folder={folder}
+                    isSelected={folder.id === selectedFolderId}
+                    isRenaming={
+                      folder.id === renamingId && !isRenamingCollapsed
+                    }
+                    isDefault={folder.id === defaultFolderId}
+                    isHovered={hoveredFolderId === folder.id}
+                    collapsed={collapsed}
+                    showFolderCounts={showFolderCounts}
+                    noteCounts={noteCounts}
+                    renameValue={renameValue}
+                    renameInputRef={
+                      folder.id === renamingId ? renameInputRef : undefined
+                    }
+                    onSelectFolder={onSelectFolder}
+                    onStartRename={startRename}
+                    onDeleteFolderRequest={onDeleteFolderRequest}
+                    onRenameValueChange={setRenameValue}
+                    onConfirmRename={confirmRename}
+                    onCancelRename={cancelRename}
+                    onMouseEnter={() => setHoveredFolderId(folder.id)}
+                    onMouseLeave={() => setHoveredFolderId(null)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           </AnimatePresence>
 
           {/* New folder inline form - collapsed version */}
@@ -690,6 +607,269 @@ export default function FoldersSidebar({
           </AnimatePresence>
         </motion.button>
       </motion.div>
+    </motion.div>
+  );
+}
+
+function SortableFolderItem({
+  folder,
+  isSelected,
+  isRenaming,
+  isDefault,
+  isHovered,
+  collapsed,
+  showFolderCounts,
+  noteCounts,
+  renameValue,
+  renameInputRef,
+  onSelectFolder,
+  onStartRename,
+  onDeleteFolderRequest,
+  onRenameValueChange,
+  onConfirmRename,
+  onCancelRename,
+  onMouseEnter,
+  onMouseLeave,
+}: {
+  folder: FolderType;
+  isSelected: boolean;
+  isRenaming: boolean;
+  isDefault: boolean;
+  isHovered: boolean;
+  collapsed: boolean;
+  showFolderCounts: boolean;
+  noteCounts: Record<string, number>;
+  renameValue: string;
+  renameInputRef: React.RefObject<HTMLInputElement | null> | undefined;
+  onSelectFolder: (id: string | null) => void;
+  onStartRename: (folder: FolderType, e?: React.MouseEvent) => void;
+  onDeleteFolderRequest: (id: string) => void;
+  onRenameValueChange: (v: string) => void;
+  onConfirmRename: (e?: React.FormEvent) => void;
+  onCancelRename: () => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: folder.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      initial={{ opacity: 0, x: -16 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -16, height: 0 }}
+      transition={{
+        duration: 0.2,
+        ease: [0.4, 0, 0.2, 1],
+      }}
+    >
+      <GenericContextMenu
+        items={[
+          {
+            label: "Rename",
+            icon: Pencil,
+            onClick: () => onStartRename(folder),
+          },
+          ...(isDefault
+            ? []
+            : [
+                {
+                  label: "Delete" as const,
+                  icon: Trash2,
+                  onClick: () => onDeleteFolderRequest(folder.id),
+                  destructive: true as const,
+                },
+              ]),
+        ]}
+      >
+        <motion.div
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.98 }}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          onClick={() => !isRenaming && onSelectFolder(folder.id)}
+          className={`group relative flex items-center gap-2 px-2.5 py-1.5 rounded-note cursor-pointer
+                      transition-colors duration-200
+                      ${collapsed ? "justify-center px-0" : ""}
+                      ${isDragging ? "shadow-lg z-10" : ""}
+                      ${
+                        isSelected
+                          ? "bg-black/[0.05] dark:bg-white/[0.06]"
+                          : "hover:bg-black/[0.025] dark:hover:bg-white/[0.025]"
+                      }`}
+          title={collapsed ? folder.name : undefined}
+        >
+          <div
+            {...attributes}
+            {...listeners}
+            className="flex items-center cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <GripVertical className="w-3 h-3 text-sidebar-textSecondary/25" strokeWidth={1.5} />
+          </div>
+          <motion.div
+            animate={{
+              ...(isSelected && !isHovered
+                ? {
+                    scale: [1, 1.15, 1],
+                    rotate: [0, -8, 0],
+                  }
+                : {}),
+              scale: isHovered ? 1.2 : 1,
+              rotate: isHovered ? 10 : 0,
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 400,
+              damping: 15,
+            }}
+          >
+            <Folder
+              className={`w-[14px] h-[14px] shrink-0 ${
+                isSelected ? "text-accent" : "text-sidebar-textSecondary"
+              }`}
+              strokeWidth={1.5}
+            />
+          </motion.div>
+          {isRenaming ? (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.15 }}
+              className="flex-1 min-w-0"
+            >
+              <form onSubmit={onConfirmRename} className="w-full">
+                <div className="relative">
+                  <input
+                    ref={renameInputRef as React.RefObject<HTMLInputElement>}
+                    type="text"
+                    value={renameValue}
+                    onChange={(e) => onRenameValueChange(e.target.value)}
+                    onBlur={onConfirmRename}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") onCancelRename();
+                    }}
+                    placeholder="Folder name"
+                    className="w-full bg-black/[0.04] dark:bg-white/[0.06] rounded-md
+                              text-[12px] font-medium text-sidebar-text
+                              outline-none ring-1 ring-accent/30
+                              focus:ring-accent
+                              px-2 py-1 tracking-[-0.01em]
+                              placeholder:text-sidebar-textSecondary/40"
+                    spellCheck={false}
+                  />
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                    <motion.button
+                      whileHover={{ scale: 1.15 }}
+                      whileTap={{ scale: 0.9 }}
+                      type="submit"
+                      onMouseDown={(e) => e.preventDefault()}
+                      className="p-1 rounded-md text-green-500 hover:text-green-600 
+                                hover:bg-green-50 dark:hover:bg-green-500/10
+                                transition-colors"
+                    >
+                      <Check className="w-3 h-3" />
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.15 }}
+                      whileTap={{ scale: 0.9 }}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={onCancelRename}
+                      className="p-1 rounded-md text-sidebar-textSecondary/60 
+                                hover:text-sidebar-textSecondary
+                                hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
+                                transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </motion.button>
+                  </div>
+                </div>
+              </form>
+            </motion.div>
+          ) : (
+            <>
+              <AnimatePresence mode="wait">
+                {!collapsed && (
+                  <motion.span
+                    key="folder-name"
+                    initial={{ opacity: 0, x: -6 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -6 }}
+                    transition={{
+                      duration: 0.2,
+                      ease: [0.4, 0, 0.2, 1],
+                    }}
+                    className="flex-1 text-[12px] font-medium text-sidebar-text tracking-[-0.01em] truncate"
+                  >
+                    {folder.name}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              {!collapsed &&
+                showFolderCounts &&
+                !isHovered &&
+                (noteCounts[folder.id] ?? 0) > 0 && (
+                  <span className="text-[11px] tabular-nums text-sidebar-textSecondary/55 tracking-[-0.005em]">
+                    {noteCounts[folder.id]}
+                  </span>
+                )}
+              <AnimatePresence>
+                {!collapsed && (
+                  <motion.div
+                    initial={false}
+                    animate={{ opacity: 0 }}
+                    whileHover={{ opacity: 1 }}
+                    className="flex items-center gap-0.5"
+                  >
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={(e) => onStartRename(folder, e)}
+                      className="p-1 rounded-md hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
+                                 text-sidebar-textSecondary/50 hover:text-sidebar-textSecondary
+                                 transition-colors"
+                      title="Rename"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </motion.button>
+                    {!isDefault && (
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteFolderRequest(folder.id);
+                        }}
+                        className="p-1 rounded-md hover:bg-red-500/[0.08]
+                                   text-sidebar-textSecondary/40 hover:text-red-400
+                                   transition-colors"
+                        title="Delete folder"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </motion.button>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </>
+          )}
+        </motion.div>
+      </GenericContextMenu>
     </motion.div>
   );
 }

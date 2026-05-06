@@ -32,6 +32,7 @@ export default function App() {
     createNote,
     deleteNote,
     renameNote,
+    reorderNotes,
     selectNote,
     saveNoteContent,
   } = useNotes({
@@ -298,6 +299,7 @@ export default function App() {
           }}
           onRenameFolder={folders.renameFolder}
           onDeleteFolderRequest={handleDeleteFolderRequest}
+          onReorderFolders={folders.reorderFolders}
           onOpenSettings={() => setSettingsOpen(true)}
         />
         <Sidebar
@@ -314,6 +316,7 @@ export default function App() {
           onCreate={createNote}
           onDeleteRequest={handleDeleteNoteRequest}
           onRename={renameNote}
+          onReorder={reorderNotes}
         />
         <div ref={editorPaneRef} className="flex-1 flex overflow-hidden">
           <div
