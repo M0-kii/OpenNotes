@@ -56,3 +56,7 @@ pids
 .idea
 debug.log
 TODO.md
+
+
+# Tauri auto-generated bindings
+src-tauri/gen/
