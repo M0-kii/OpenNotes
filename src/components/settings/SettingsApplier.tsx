@@ -10,7 +10,7 @@ interface Props {
   settings: Settings;
 }
 
-function resolveFontStack(key: Settings["editorFont"]): string {
+function resolveFontStack(key: Settings["editorFont"] | Settings["uiFont"]): string {
   return (
     FONT_OPTIONS.find((f) => f.key === key)?.cssStack ??
     FONT_OPTIONS[0].cssStack
@@ -39,6 +39,10 @@ export default function SettingsApplier({ settings }: Props) {
   useEffect(() => {
     const root = document.documentElement.style;
     root.setProperty(
+      "--ui-font-family",
+      resolveFontStack(settings.uiFont)
+    );
+    root.setProperty(
       "--editor-font-family",
       resolveFontStack(settings.editorFont)
     );
@@ -52,6 +56,7 @@ export default function SettingsApplier({ settings }: Props) {
       EDITOR_WIDTH_MAP[settings.editorWidth]
     );
   }, [
+    settings.uiFont,
     settings.editorFont,
     settings.editorFontSize,
     settings.editorLineHeight,
