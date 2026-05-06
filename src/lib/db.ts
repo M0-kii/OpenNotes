@@ -34,6 +34,14 @@ export async function initDb(): Promise<void> {
     )`
   );
 
+  await database.execute(
+    `CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY NOT NULL,
+      value TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`
+  );
+
   // Add folder_id column to notes if missing (idempotent — sqlite has no
   // ALTER ... IF NOT EXISTS, so we swallow the duplicate-column error).
   try {
@@ -241,5 +249,33 @@ export async function searchNotes(
   return await database.select<Note[]>(
     "SELECT * FROM notes WHERE title LIKE $1 OR content LIKE $2 ORDER BY updated_at DESC",
     [searchTerm, searchTerm]
+  );
+}
+
+export async function getAllSettings(): Promise<Record<string, unknown>> {
+  const database = await getDb();
+  const rows = await database.select<{ key: string; value: string }[]>(
+    "SELECT key, value FROM settings"
+  );
+  const out: Record<string, unknown> = {};
+  for (const row of rows) {
+    try {
+      out[row.key] = JSON.parse(row.value);
+    } catch {
+      // Corrupted row — skip; coerceSetting will apply default.
+    }
+  }
+  return out;
+}
+
+export async function setSetting(key: string, value: unknown): Promise<void> {
+  const database = await getDb();
+  const json = JSON.stringify(value);
+  const now = Date.now();
+  await database.execute(
+    `INSERT INTO settings (key, value, updated_at)
+     VALUES ($1, $2, $3)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+    [key, json, now]
   );
 }
