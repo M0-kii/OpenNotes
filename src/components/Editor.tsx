@@ -148,68 +148,70 @@ export default function Editor({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="flex-1 flex flex-col bg-editor-bg"
+            className="flex-1 flex flex-col bg-editor-bg overflow-hidden"
           >
-            <div className="px-10 pt-10 pb-3">
-              <input
-                type="text"
-                value={note.title}
-                onChange={handleTitleChange}
-                placeholder="Title"
-                className="w-full text-[26px] font-bold text-editor-text
-                           bg-transparent border-none outline-none
-                           placeholder:text-editor-text/15 tracking-[-0.02em]
-                           pb-3 border-b border-border transition-colors duration-200
-                           focus:border-accent/40"
-                spellCheck={false}
-              />
-              <div className="flex items-center gap-6 mt-2.5 text-[11px] text-editor-text/20 tracking-[-0.01em]">
-                <span>
-                  Created{" "}
-                  {new Date(note.created_at).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-                <span>
-                  Edited{" "}
-                  {new Date(note.updated_at).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-10 py-5">
-              <EditorContextMenu editorRef={editorRef}>
-                <div
-                  ref={editorRef}
-                  contentEditable
-                  suppressContentEditableWarning
-                  onInput={handleInput}
-                  onKeyDown={handleKeyDown}
-                  onCompositionStart={handleCompositionStart}
-                  onCompositionEnd={handleCompositionEnd}
-                  onPaste={handlePaste}
-                  onBlur={saveContent}
-                  className="editor-content w-full h-full min-h-[200px] text-[14px] leading-[1.8]
-                             font-[400] text-editor-text/90 outline-none whitespace-pre-wrap
-                             break-words caret-accent
-                             empty:before:content-[attr(data-placeholder)]
-                             empty:before:text-editor-text/15 empty:before:tracking-[-0.01em]
-                             selection:bg-accent/15
-                             tracking-[-0.01em]"
-                  data-placeholder="Start writing..."
-                  spellCheck
+            <div className="editor-column flex-1 flex flex-col min-h-0">
+              <div className="px-10 pt-10 pb-3">
+                <input
+                  type="text"
+                  value={note.title}
+                  onChange={handleTitleChange}
+                  placeholder="Title"
+                  className="w-full text-[26px] font-bold text-editor-text
+                             bg-transparent border-none outline-none
+                             placeholder:text-editor-text/15 tracking-[-0.02em]
+                             pb-3 border-b border-border transition-colors duration-200
+                             focus:border-accent/40"
+                  spellCheck={false}
                 />
-              </EditorContextMenu>
+                <div className="flex items-center gap-6 mt-2.5 text-[11px] text-editor-text/20 tracking-[-0.01em]">
+                  <span>
+                    Created{" "}
+                    {new Date(note.created_at).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  <span>
+                    Edited{" "}
+                    {new Date(note.updated_at).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-10 py-5">
+                <EditorContextMenu editorRef={editorRef}>
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={handleInput}
+                    onKeyDown={handleKeyDown}
+                    onCompositionStart={handleCompositionStart}
+                    onCompositionEnd={handleCompositionEnd}
+                    onPaste={handlePaste}
+                    onBlur={saveContent}
+                    className="editor-content editor-surface w-full h-full min-h-[200px]
+                               font-[400] text-editor-text/90 outline-none whitespace-pre-wrap
+                               break-words caret-accent
+                               empty:before:content-[attr(data-placeholder)]
+                               empty:before:text-editor-text/15 empty:before:tracking-[-0.01em]
+                               selection:bg-accent/15
+                               tracking-[-0.01em]"
+                    data-placeholder="Start writing..."
+                    spellCheck
+                  />
+                </EditorContextMenu>
+              </div>
             </div>
           </motion.div>
         )}
