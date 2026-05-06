@@ -14,6 +14,9 @@ import {
   Columns2,
   Eye,
   FolderDown,
+  Minus,
+  Plus,
+  ChevronDown,
 } from "lucide-react";
 import type { Settings, Folder, TitlebarStyle } from "../../types";
 import { FONT_SIZE_MAX, FONT_SIZE_MIN } from "../../lib/settings";
@@ -85,12 +88,14 @@ export default function SettingsDialog({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.97, y: 8 }}
                 transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                           z-50 w-[600px] max-w-[calc(100vw-32px)]
-                           max-h-[min(640px,calc(100vh-48px))]
-                           bg-editor-bg border border-border rounded-[14px]
-                           shadow-2xl overflow-hidden flex flex-col"
+                className="fixed inset-0 z-50 grid place-items-center p-4 sm:p-6 pointer-events-none"
               >
+                <div
+                  className="pointer-events-auto w-[600px] max-w-full
+                             max-h-[min(640px,calc(100vh-48px))]
+                             bg-editor-bg border border-border rounded-[14px]
+                             shadow-2xl overflow-hidden flex flex-col"
+                >
                 <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
                   <Dialog.Title className="text-[14px] font-semibold text-editor-text tracking-[-0.01em]">
                     Settings
@@ -211,20 +216,55 @@ export default function SettingsDialog({
                           <motion.div variants={rowItem}>
                             <SettingsRow
                               label="Font size"
-                              description={`${settings.editorFontSize}px`}
+                              description="Adjust the editor text size."
                               icon={ALargeSmall}
                             >
-                              <input
-                                type="range"
-                                min={FONT_SIZE_MIN}
-                                max={FONT_SIZE_MAX}
-                                step={1}
-                                value={settings.editorFontSize}
-                                onChange={(e) =>
-                                  onChange("editorFontSize", Number(e.target.value))
-                                }
-                                className="w-[160px] accent-accent"
-                              />
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() =>
+                                    onChange(
+                                      "editorFontSize",
+                                      Math.max(FONT_SIZE_MIN, settings.editorFontSize - 1)
+                                    )
+                                  }
+                                  className="w-[24px] h-[24px] rounded-md flex items-center justify-center
+                                             border border-border text-editor-text/50 hover:text-editor-text
+                                             hover:bg-black/[0.03] dark:hover:bg-white/[0.04]
+                                             transition-colors duration-150"
+                                  aria-label="Decrease font size"
+                                >
+                                  <Minus className="w-3 h-3" strokeWidth={1.75} />
+                                </button>
+                                <input
+                                  type="range"
+                                  min={FONT_SIZE_MIN}
+                                  max={FONT_SIZE_MAX}
+                                  step={1}
+                                  value={settings.editorFontSize}
+                                  onChange={(e) =>
+                                    onChange("editorFontSize", Number(e.target.value))
+                                  }
+                                  className="w-[90px] h-1.5 accent-accent"
+                                />
+                                <button
+                                  onClick={() =>
+                                    onChange(
+                                      "editorFontSize",
+                                      Math.min(FONT_SIZE_MAX, settings.editorFontSize + 1)
+                                    )
+                                  }
+                                  className="w-[24px] h-[24px] rounded-md flex items-center justify-center
+                                             border border-border text-editor-text/50 hover:text-editor-text
+                                             hover:bg-black/[0.03] dark:hover:bg-white/[0.04]
+                                             transition-colors duration-150"
+                                  aria-label="Increase font size"
+                                >
+                                  <Plus className="w-3 h-3" strokeWidth={1.75} />
+                                </button>
+                                <span className="text-[12px] font-medium text-editor-text tabular-nums w-[26px] text-center">
+                                  {settings.editorFontSize}
+                                </span>
+                              </div>
                             </SettingsRow>
                           </motion.div>
 
@@ -287,25 +327,11 @@ export default function SettingsDialog({
                               description="Used when no folder is selected."
                               icon={FolderDown}
                             >
-                              <select
-                                value={settings.defaultFolderId ?? ""}
-                                onChange={(e) =>
-                                  onChange(
-                                    "defaultFolderId",
-                                    e.target.value === "" ? null : e.target.value
-                                  )
-                                }
-                                className="text-[12px] bg-editor-bg border border-border rounded
-                                           px-2 py-1 text-editor-text outline-none
-                                           focus:border-accent/40"
-                              >
-                                <option value="">Use current selection</option>
-                                {folders.map((f) => (
-                                  <option key={f.id} value={f.id}>
-                                    {f.name}
-                                  </option>
-                                ))}
-                              </select>
+                              <FolderSelect
+                                folders={folders}
+                                selectedId={settings.defaultFolderId}
+                                onChange={(id) => onChange("defaultFolderId", id)}
+                              />
                             </SettingsRow>
                           </motion.div>
                         </motion.div>
@@ -317,12 +343,103 @@ export default function SettingsDialog({
                 <div className="px-5 py-2.5 border-t border-border text-[11px] text-editor-text/35 tracking-[-0.005em] shrink-0">
                   Changes are saved automatically.
                 </div>
+                </div>
               </motion.div>
             </Dialog.Content>
           </Dialog.Portal>
         )}
       </AnimatePresence>
     </Dialog.Root>
+  );
+}
+
+function FolderSelect({
+  folders,
+  selectedId,
+  onChange,
+}: {
+  folders: Folder[];
+  selectedId: string | null;
+  onChange: (id: string | null) => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const selected = selectedId
+    ? folders.find((f) => f.id === selectedId)
+    : null;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setMenuOpen(!menuOpen)}
+        className="flex items-center gap-2 text-[12px] bg-editor-bg border border-border rounded-md
+                   px-2.5 py-1.5 text-editor-text outline-none
+                   hover:border-editor-text/20
+                   focus:border-accent/40 transition-colors duration-150 min-w-[170px]"
+      >
+        <span className="flex-1 text-left truncate">
+          {selected ? selected.name : "Use current selection"}
+        </span>
+        <motion.div
+          animate={{ rotate: menuOpen ? 180 : 0 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
+        >
+          <ChevronDown className="w-3.5 h-3.5 text-editor-text/35" strokeWidth={1.75} />
+        </motion.div>
+      </button>
+      <AnimatePresence>
+        {menuOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setMenuOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -4, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.97 }}
+              transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute right-0 top-full mt-1 z-50 w-full min-w-[200px]
+                         bg-editor-bg border border-border rounded-lg shadow-lg
+                         overflow-hidden py-0.5"
+            >
+              <button
+                onClick={() => {
+                  onChange(null);
+                  setMenuOpen(false);
+                }}
+                className={`w-full text-left px-3 py-1.5 text-[12px] tracking-[-0.01em]
+                           transition-colors duration-100
+                           ${
+                             selectedId === null
+                               ? "bg-accent-soft text-accent font-medium"
+                               : "text-editor-text/70 hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
+                           }`}
+              >
+                Use current selection
+              </button>
+              {folders.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => {
+                    onChange(f.id);
+                    setMenuOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-[12px] tracking-[-0.01em]
+                             transition-colors duration-100
+                             ${
+                               selectedId === f.id
+                                 ? "bg-accent-soft text-accent font-medium"
+                                 : "text-editor-text/70 hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
+                             }`}
+                >
+                  {f.name}
+                </button>
+              ))}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
