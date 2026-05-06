@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useNotes } from "./hooks/useNotes";
 import { useFolders } from "./hooks/useFolders";
 import { useSettings } from "./hooks/useSettings";
@@ -11,7 +12,12 @@ import ConfirmDialog from "./components/ConfirmDialog";
 import SettingsApplier from "./components/settings/SettingsApplier";
 import SettingsDialog from "./components/settings/SettingsDialog";
 import SplitDivider from "./components/SplitDivider";
-import { getNoteCountInFolder, getNoteCountsByFolder, getNoteById } from "./lib/db";
+import {
+  getNoteCountInFolder,
+  getNoteCountsByFolder,
+  getNoteById,
+  moveNoteToFolder,
+} from "./lib/db";
 import type { Note } from "./types";
 
 export default function App() {
@@ -36,6 +42,7 @@ export default function App() {
     reorderNotes,
     selectNote,
     saveNoteContent,
+    refreshNotes,
   } = useNotes({
     folderId: folders.selectedFolderId,
     createInFolderId: folders.selectedFolderId ?? settings.defaultFolderId,
@@ -100,16 +107,29 @@ export default function App() {
     setActivePane("right");
   }, []);
 
+  const handleMoveToFolder = useCallback(
+    async (noteId: string, folderId: string) => {
+      try {
+        await moveNoteToFolder(noteId, folderId);
+        // Refresh notes so the moved note disappears from the current folder
+        refreshNotes();
+      } catch (e) {
+        console.error("Failed to move note to folder:", e);
+      }
+    },
+    [refreshNotes],
+  );
+
   const handleRightContentChange = useCallback(
     (id: string, content: string) => {
       saveNoteContent(id, content);
       setRightNote((n) =>
         n && n.id === id
           ? { ...n, content, updated_at: new Date().toISOString() }
-          : n
+          : n,
       );
     },
-    [saveNoteContent]
+    [saveNoteContent],
   );
 
   const handleRightTitleChange = useCallback(
@@ -118,10 +138,10 @@ export default function App() {
       setRightNote((n) =>
         n && n.id === id
           ? { ...n, title, updated_at: new Date().toISOString() }
-          : n
+          : n,
       );
     },
-    [renameNote]
+    [renameNote],
   );
 
   const handleSelectFromSidebar = useCallback(
@@ -137,7 +157,7 @@ export default function App() {
         selectNote(id);
       }
     },
-    [activePane, splitNoteId, selectNote]
+    [activePane, splitNoteId, selectNote],
   );
 
   const handleResize = useCallback((ratio: number) => {
@@ -182,7 +202,7 @@ export default function App() {
           return selectedId;
         });
         setActivePane((p) =>
-          splitNoteId === null && selectedId !== null ? "right" : p
+          splitNoteId === null && selectedId !== null ? "right" : p,
         );
         return;
       }
@@ -220,11 +240,32 @@ export default function App() {
     return () => window.removeEventListener("keydown", handler);
   }, [splitNoteId, activePane, selectedId, selectNote]);
 
-  const handleDeleteNoteRequest = useCallback((id: string) => {
-    const note = notes.find((n) => n.id === id);
-    if (!note) return;
-    setPendingNoteDelete({ id, title: note.title || "Untitled" });
-  }, [notes]);
+  const handleDeleteNoteRequest = useCallback(
+    (id: string) => {
+      const note = notes.find((n) => n.id === id);
+      if (!note) return;
+      setPendingNoteDelete({ id, title: note.title || "Untitled" });
+    },
+    [notes],
+  );
+
+  // Discord Rich Presence
+  useEffect(() => {
+    const enabled = settings.discordRpcEnabled && selectedNote !== null;
+    const details =
+      selectedNote?.note_type === "mindmap"
+        ? "Editing a mind map"
+        : "Writing a note";
+    const stateText = selectedNote?.title || "Untitled";
+
+    invoke("update_discord_presence", {
+      enabled,
+      details,
+      stateText,
+    }).catch(() => {
+      // Silently ignore — Discord may not be running.
+    });
+  }, [settings.discordRpcEnabled, selectedNote]);
 
   const isLoading = folders.isLoading || notesLoading || !settingsLoaded;
   const error = folders.error || notesError;
@@ -252,12 +293,26 @@ export default function App() {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md px-4">
             <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-              <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              <svg
+                className="w-6 h-6 text-red-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                />
               </svg>
             </div>
-            <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">Database Error</p>
-            <p className="text-xs text-red-500/70 dark:text-red-400/60 break-all">{error}</p>
+            <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">
+              Database Error
+            </p>
+            <p className="text-xs text-red-500/70 dark:text-red-400/60 break-all">
+              {error}
+            </p>
           </div>
         </div>
       </div>
@@ -267,7 +322,8 @@ export default function App() {
   const selectedFolder =
     folders.selectedFolderId === null
       ? null
-      : folders.folders.find((f) => f.id === folders.selectedFolderId) ?? null;
+      : (folders.folders.find((f) => f.id === folders.selectedFolderId) ??
+        null);
   const folderName = selectedFolder?.name ?? "All Notes";
 
   const handleDeleteFolderRequest = async (id: string) => {
@@ -278,12 +334,15 @@ export default function App() {
   };
 
   const defaultFolder = folders.folders.find(
-    (f) => f.id === folders.defaultFolderId
+    (f) => f.id === folders.defaultFolderId,
   );
   const defaultFolderName = defaultFolder?.name ?? "Notes";
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-editor-bg overflow-hidden" onContextMenu={(e) => e.preventDefault()}>
+    <div
+      className="h-screen w-screen flex flex-col bg-editor-bg overflow-hidden"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <SettingsApplier settings={settings} />
       <TitleBar style={settings.titlebarStyle} />
       <div className="flex-1 flex overflow-hidden">
@@ -306,9 +365,7 @@ export default function App() {
         <Sidebar
           notes={notes}
           selectedId={
-            activePane === "right" && splitNoteId
-              ? splitNoteId
-              : selectedId
+            activePane === "right" && splitNoteId ? splitNoteId : selectedId
           }
           searchQuery={searchQuery}
           folderName={folderName}
@@ -319,8 +376,10 @@ export default function App() {
           onDeleteRequest={handleDeleteNoteRequest}
           onRename={renameNote}
           onReorder={reorderNotes}
+          onMoveToFolder={handleMoveToFolder}
+          onDropInEditor={openInSplit}
         />
-        <div ref={editorPaneRef} className="flex-1 flex overflow-hidden">
+        <div ref={editorPaneRef} className="flex-1 flex overflow-hidden" data-editor-drop-zone="true">
           <div
             className="flex flex-col min-w-0 overflow-hidden"
             style={{ flex: `${splitNoteId ? splitRatio : 1} 1 0` }}
@@ -387,8 +446,8 @@ export default function App() {
             ? pendingDelete.count === 0
               ? "This folder is empty and will be removed."
               : pendingDelete.count === 1
-              ? `Its 1 note will move to "${defaultFolderName}".`
-              : `Its ${pendingDelete.count} notes will move to "${defaultFolderName}".`
+                ? `Its 1 note will move to "${defaultFolderName}".`
+                : `Its ${pendingDelete.count} notes will move to "${defaultFolderName}".`
             : ""
         }
         confirmLabel="Delete"
@@ -404,11 +463,7 @@ export default function App() {
         onOpenChange={(o) => {
           if (!o) setPendingNoteDelete(null);
         }}
-        title={
-          pendingNoteDelete
-            ? `Delete "${pendingNoteDelete.title}"?`
-            : ""
-        }
+        title={pendingNoteDelete ? `Delete "${pendingNoteDelete.title}"?` : ""}
         description="This note will be permanently deleted. This action cannot be undone."
         confirmLabel="Delete"
         destructive

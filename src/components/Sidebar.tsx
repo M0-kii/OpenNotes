@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Pencil, Check, X, GripVertical } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, GripVertical, FileText, GitBranch, ChevronLeft } from "lucide-react";
 import type { Note } from "../types";
 import SearchBar from "./SearchBar";
 import GenericContextMenu from "./ui/GenericContextMenu";
@@ -34,6 +34,8 @@ interface SidebarProps {
   onDeleteRequest: (id: string) => void;
   onRename: (id: string, title: string) => void;
   onReorder: (orderedIds: string[]) => void;
+  onMoveToFolder?: (noteId: string, folderId: string) => void;
+  onDropInEditor?: (noteId: string) => void;
 }
 
 export default function Sidebar({
@@ -48,12 +50,15 @@ export default function Sidebar({
   onDeleteRequest,
   onRename,
   onReorder,
+  onMoveToFolder,
+  onDropInEditor,
 }: SidebarProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [popupOpen, setPopupOpen] = useState(false);
   const plusButtonRef = useRef<HTMLButtonElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const [collapsed, setCollapsed] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -61,14 +66,51 @@ export default function Sidebar({
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = notes.findIndex((n) => n.id === active.id);
-    const newIndex = notes.findIndex((n) => n.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-    const reordered = [...notes];
-    const [moved] = reordered.splice(oldIndex, 1);
-    reordered.splice(newIndex, 0, moved);
-    onReorder(reordered.map((n) => n.id));
+
+    // Existing reorder logic
+    if (over && active.id !== over.id) {
+      const oldIndex = notes.findIndex((n) => n.id === active.id);
+      const newIndex = notes.findIndex((n) => n.id === over.id);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const reordered = [...notes];
+        const [moved] = reordered.splice(oldIndex, 1);
+        reordered.splice(newIndex, 0, moved);
+        onReorder(reordered.map((n) => n.id));
+        return; // Handled as reorder
+      }
+    }
+
+    // Check if dropped on a folder or editor
+    const activatorEvent = event.activatorEvent as PointerEvent;
+    const dropX = activatorEvent.clientX;
+    const dropY = activatorEvent.clientY;
+
+    if (dropX !== undefined && dropY !== undefined) {
+      const elementsAtPoint = document.elementsFromPoint(dropX, dropY);
+
+      // Check for folder drop
+      for (const el of elementsAtPoint) {
+        const folderId = (el as HTMLElement).closest?.('[data-folder-id]')?.getAttribute?.('data-folder-id');
+        if (folderId) {
+          onMoveToFolder?.(String(active.id), folderId);
+          return;
+        }
+      }
+
+      // Check for editor drop
+      const editorEl = document.querySelector('[data-editor-drop-zone]');
+      if (editorEl) {
+        const editorRect = editorEl.getBoundingClientRect();
+        if (
+          dropX >= editorRect.left &&
+          dropX <= editorRect.right &&
+          dropY >= editorRect.top &&
+          dropY <= editorRect.bottom
+        ) {
+          onDropInEditor?.(String(active.id));
+        }
+      }
+    }
   };
 
   useEffect(() => {
@@ -100,44 +142,84 @@ export default function Sidebar({
   };
 
   return (
-    <div
-      className="w-[270px] min-w-[270px] h-full flex flex-col
-                 glass border-r border-border select-none"
+    <motion.div
+      animate={{ width: collapsed ? 48 : 270 }}
+      initial={{ width: 270 }}
+      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+      className="h-full flex flex-col glass border-r border-border select-none shrink-0 overflow-hidden"
     >
-      <div className="flex items-center justify-between px-5 pt-4 pb-3">
-        <h1 className="text-[13px] font-semibold text-sidebar-text tracking-[-0.01em] truncate">
-          {folderName}
-        </h1>
-        <div className="flex items-center gap-1">
-          <div className="relative">
-            <motion.button
-              ref={plusButtonRef}
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.92 }}
-              onClick={() => setPopupOpen((o) => !o)}
-              className="p-1.5 rounded-btn text-sidebar-textSecondary
-                         hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
-                         transition-colors duration-150"
-              title="New note or mind map"
+      <div className="flex items-center justify-between px-3 pt-4 pb-3">
+        <AnimatePresence mode="wait">
+          {!collapsed && (
+            <motion.div
+              key="title"
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: "auto" }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              className="flex items-center gap-2 overflow-hidden"
             >
-              <Plus className="w-[15px] h-[15px]" />
-            </motion.button>
-            <NoteTypePopup
-              open={popupOpen}
-              onClose={() => setPopupOpen(false)}
-              onNote={onCreate}
-              onMindmap={onCreateMindmap}
-              buttonRef={plusButtonRef}
-            />
+              <h1 className="text-[13px] font-semibold text-sidebar-text tracking-[-0.01em] whitespace-nowrap">
+                {folderName}
+              </h1>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {!collapsed && (
+          <div className="flex items-center gap-1">
+            <div className="relative">
+              <motion.button
+                ref={plusButtonRef}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                onClick={() => setPopupOpen((o) => !o)}
+                className="p-1.5 rounded-btn text-sidebar-textSecondary
+                           hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
+                           transition-colors duration-150"
+                title="New note or mind map"
+              >
+                <Plus className="w-[15px] h-[15px]" />
+              </motion.button>
+              <NoteTypePopup
+                open={popupOpen}
+                onClose={() => setPopupOpen(false)}
+                onNote={onCreate}
+                onMindmap={onCreateMindmap}
+                buttonRef={plusButtonRef}
+              />
+            </div>
           </div>
-        </div>
+        )}
+        <motion.button
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.92 }}
+          onClick={() => setCollapsed(!collapsed)}
+          className="p-1 rounded-btn text-sidebar-textSecondary/50 hover:text-sidebar-textSecondary
+                     hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors duration-150
+                     ml-auto"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <motion.div
+            animate={{ rotate: collapsed ? 180 : 0 }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <ChevronLeft className="w-[14px] h-[14px]" strokeWidth={1.5} />
+          </motion.div>
+        </motion.button>
       </div>
 
-      <SearchBar value={searchQuery} onChange={onSearchChange} />
+      {!collapsed && <SearchBar value={searchQuery} onChange={onSearchChange} />}
 
+      {!collapsed && (
       <div className="flex-1 overflow-y-auto">
-        <div className="px-2.5 py-1 space-y-px">
-          <AnimatePresence initial={false}>
+        <GenericContextMenu
+          items={[
+            { label: "New note", icon: FileText, onClick: onCreate },
+            { label: "New mind map", icon: GitBranch, onClick: onCreateMindmap },
+          ]}
+        >
+          <div className="px-2.5 py-1 space-y-px">
+            <AnimatePresence initial={false}>
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -182,8 +264,10 @@ export default function Sidebar({
             </motion.div>
           )}
         </div>
+        </GenericContextMenu>
       </div>
-    </div>
+      )}
+    </motion.div>
   );
 }
 

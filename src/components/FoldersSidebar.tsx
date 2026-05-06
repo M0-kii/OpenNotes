@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Check,
@@ -20,6 +20,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -248,8 +249,13 @@ export default function FoldersSidebar({
       </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        {/* All Notes */}
-        <div className="px-1.5 pt-1 pb-2">
+        <GenericContextMenu
+          items={[
+            { label: "New folder", icon: FolderPlus, onClick: startNewFolder },
+          ]}
+        >
+          {/* All Notes */}
+          <div className="px-1.5 pt-1 pb-2">
           <motion.button
             type="button"
             onClick={() => onSelectFolder(null)}
@@ -512,6 +518,7 @@ export default function FoldersSidebar({
             </motion.div>
           )}
         </div>
+        </GenericContextMenu>
       </div>
 
       {/* New Folder button */}
@@ -653,11 +660,24 @@ function SortableFolderItem({
   const {
     attributes,
     listeners,
-    setNodeRef,
+    setNodeRef: setSortableRef,
     transform,
     transition,
     isDragging,
   } = useSortable({ id: folder.id });
+
+  const {
+    setNodeRef: setDroppableRef,
+    isOver,
+  } = useDroppable({ id: `folder-drop-${folder.id}` });
+
+  const setNodeRef = useCallback(
+    (node: HTMLElement | null) => {
+      setSortableRef(node);
+      setDroppableRef(node);
+    },
+    [setSortableRef, setDroppableRef]
+  );
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -669,6 +689,7 @@ function SortableFolderItem({
     <motion.div
       ref={setNodeRef}
       style={style}
+      data-folder-id={folder.id}
       initial={{ opacity: 0, x: -16 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -16, height: 0 }}
@@ -703,14 +724,15 @@ function SortableFolderItem({
           onMouseLeave={onMouseLeave}
           onClick={() => !isRenaming && onSelectFolder(folder.id)}
           className={`group relative flex items-center gap-2 px-2.5 py-1.5 rounded-note cursor-pointer
-                      transition-colors duration-200
-                      ${collapsed ? "justify-center px-0" : ""}
-                      ${isDragging ? "shadow-lg z-10" : ""}
-                      ${
-                        isSelected
-                          ? "bg-black/[0.05] dark:bg-white/[0.06]"
-                          : "hover:bg-black/[0.025] dark:hover:bg-white/[0.025]"
-                      }`}
+                       transition-colors duration-200
+                       ${collapsed ? "justify-center px-0" : ""}
+                       ${isDragging ? "shadow-lg z-10" : ""}
+                       ${isOver ? "ring-2 ring-accent/40 bg-accent/[0.06] dark:bg-accent/[0.08]" : ""}
+                       ${
+                         isSelected && !isOver
+                           ? "bg-black/[0.05] dark:bg-white/[0.06]"
+                           : !isOver ? "hover:bg-black/[0.025] dark:hover:bg-white/[0.025]" : ""
+                       }`}
           title={collapsed ? folder.name : undefined}
         >
           <div

@@ -347,6 +347,15 @@ export async function reorderFolders(orderedIds: string[]): Promise<void> {
   }
 }
 
+export async function moveNoteToFolder(noteId: string, folderId: string | null): Promise<void> {
+  const database = await getDb();
+  const now = new Date().toISOString();
+  await database.execute(
+    "UPDATE notes SET folder_id = $1, updated_at = $2 WHERE id = $3",
+    [folderId, now, noteId]
+  );
+}
+
 export async function reorderNotes(orderedIds: string[]): Promise<void> {
   const database = await getDb();
   await database.execute("BEGIN");
