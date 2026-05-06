@@ -168,14 +168,62 @@ export default function App() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === ",") {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+
+      // Settings
+      if (e.key === ",") {
         e.preventDefault();
         setSettingsOpen((o) => !o);
+        return;
+      }
+
+      // Split editor shortcuts
+      if (e.key === "\\") {
+        e.preventDefault();
+        setSplitNoteId((curr) => {
+          if (curr !== null) return null;
+          // Open the currently-active note in a new split.
+          return selectedId;
+        });
+        setActivePane((p) =>
+          splitNoteId === null && selectedId !== null ? "right" : p
+        );
+        return;
+      }
+
+      if (e.key === "1") {
+        e.preventDefault();
+        setActivePane("left");
+        return;
+      }
+
+      if (e.key === "2" && splitNoteId !== null) {
+        e.preventDefault();
+        setActivePane("right");
+        return;
+      }
+
+      if (e.key.toLowerCase() === "w") {
+        if (splitNoteId === null) return; // single pane → no-op
+        e.preventDefault();
+        if (activePane === "right") {
+          // Close right pane.
+          setSplitNoteId(null);
+          setActivePane("left");
+        } else {
+          // Close left → promote right to be the only pane.
+          if (splitNoteId) {
+            selectNote(splitNoteId);
+            setSplitNoteId(null);
+            setActivePane("left");
+          }
+        }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [splitNoteId, activePane, selectedId, selectNote]);
 
   const handleDeleteNoteRequest = useCallback((id: string) => {
     const note = notes.find((n) => n.id === id);
