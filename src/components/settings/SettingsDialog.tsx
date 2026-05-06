@@ -6,6 +6,7 @@ import {
   Palette,
   PencilLine,
   Folder as FolderIcon,
+  GitBranch,
   Github,
   SunMoon,
   Monitor,
@@ -19,7 +20,7 @@ import {
   Plus,
   ChevronDown,
 } from "lucide-react";
-import type { Settings, Folder, TitlebarStyle, FontKey } from "../../types";
+import type { Settings, Folder, TitlebarStyle, FontKey, MindmapLayout } from "../../types";
 import { FONT_SIZE_MAX, FONT_SIZE_MIN } from "../../lib/settings";
 import SettingsRow from "./SettingsRow";
 import SegmentedControl from "./SegmentedControl";
@@ -33,12 +34,13 @@ interface Props {
   onChange: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
 }
 
-type TabId = "appearance" | "editor" | "folders";
+type TabId = "appearance" | "editor" | "folders" | "mindmap";
 
 const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string; strokeWidth?: string | number }> }[] = [
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "editor", label: "Editor", icon: PencilLine },
   { id: "folders", label: "Folders", icon: FolderIcon },
+  { id: "mindmap", label: "Mind Map", icon: GitBranch },
 ];
 
 const rowStagger = {
@@ -348,6 +350,34 @@ export default function SettingsDialog({
                                 folders={folders}
                                 selectedId={settings.defaultFolderId}
                                 onChange={(id) => onChange("defaultFolderId", id)}
+                              />
+                            </SettingsRow>
+                          </motion.div>
+                        </motion.div>
+                      )}
+
+                      {activeTab === "mindmap" && (
+                        <motion.div
+                          key="mindmap"
+                          variants={rowStagger}
+                          initial="hidden"
+                          animate="visible"
+                          exit={{ opacity: 0, y: -6, transition: { duration: 0.12 } }}
+                        >
+                          <motion.div variants={rowItem}>
+                            <SettingsRow
+                              label="Default layout"
+                              description="Direction child nodes extend from the root."
+                              icon={GitBranch}
+                            >
+                              <SegmentedControl<MindmapLayout>
+                                ariaLabel="Mind map layout"
+                                value={settings.mindmapLayout}
+                                onChange={(v) => onChange("mindmapLayout", v)}
+                                options={[
+                                  { value: "top-down", label: "Top-down" },
+                                  { value: "left-right", label: "Left-right" },
+                                ]}
                               />
                             </SettingsRow>
                           </motion.div>

@@ -5,6 +5,7 @@ import { useSettings } from "./hooks/useSettings";
 import FoldersSidebar from "./components/FoldersSidebar";
 import Sidebar from "./components/Sidebar";
 import Editor from "./components/Editor";
+import MindmapEditor from "./components/MindmapEditor";
 import TitleBar from "./components/TitleBar";
 import ConfirmDialog from "./components/ConfirmDialog";
 import SettingsApplier from "./components/settings/SettingsApplier";
@@ -313,7 +314,8 @@ export default function App() {
           folderName={folderName}
           onSearchChange={setSearchQuery}
           onSelect={handleSelectFromSidebar}
-          onCreate={createNote}
+          onCreate={() => createNote("note")}
+          onCreateMindmap={() => createNote("mindmap")}
           onDeleteRequest={handleDeleteNoteRequest}
           onRename={renameNote}
           onReorder={reorderNotes}
@@ -323,13 +325,22 @@ export default function App() {
             className="flex flex-col min-w-0 overflow-hidden"
             style={{ flex: `${splitNoteId ? splitRatio : 1} 1 0` }}
           >
-            <Editor
-              note={selectedNote}
-              onContentChange={saveNoteContent}
-              onTitleChange={renameNote}
-              isActive={activePane === "left" || splitNoteId === null}
-              onFocus={() => setActivePane("left")}
-            />
+            {selectedNote?.note_type === "mindmap" ? (
+              <MindmapEditor
+                note={selectedNote}
+                layout={settings.mindmapLayout}
+                onContentChange={saveNoteContent}
+                onTitleChange={renameNote}
+              />
+            ) : (
+              <Editor
+                note={selectedNote}
+                onContentChange={saveNoteContent}
+                onTitleChange={renameNote}
+                isActive={activePane === "left" || splitNoteId === null}
+                onFocus={() => setActivePane("left")}
+              />
+            )}
           </div>
           {splitNoteId && (
             <>
@@ -342,14 +353,23 @@ export default function App() {
                 className="flex flex-col min-w-0 overflow-hidden"
                 style={{ flex: `${1 - splitRatio} 1 0` }}
               >
-                <Editor
-                  note={rightNote}
-                  onContentChange={handleRightContentChange}
-                  onTitleChange={handleRightTitleChange}
-                  isActive={activePane === "right"}
-                  onFocus={() => setActivePane("right")}
-                  onClose={closeSplit}
-                />
+                {rightNote?.note_type === "mindmap" ? (
+                  <MindmapEditor
+                    note={rightNote}
+                    layout={settings.mindmapLayout}
+                    onContentChange={handleRightContentChange}
+                    onTitleChange={handleRightTitleChange}
+                  />
+                ) : (
+                  <Editor
+                    note={rightNote}
+                    onContentChange={handleRightContentChange}
+                    onTitleChange={handleRightTitleChange}
+                    isActive={activePane === "right"}
+                    onFocus={() => setActivePane("right")}
+                    onClose={closeSplit}
+                  />
+                )}
               </div>
             </>
           )}

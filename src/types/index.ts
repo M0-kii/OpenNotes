@@ -1,9 +1,24 @@
+export type NoteType = "note" | "mindmap";
+
+export interface MindmapNode {
+  id: string;
+  text: string;
+  parentId: string | null;
+  x: number;
+  y: number;
+}
+
+export interface MindmapData {
+  nodes: MindmapNode[];
+}
+
 export interface Note {
   id: string;
   title: string;
   content: string;
   folder_id: string | null;
   position: number;
+  note_type: NoteType;
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +47,8 @@ export type FontKey =
 export type LineHeightKey = "tight" | "normal" | "relaxed";
 export type EditorWidthKey = "narrow" | "comfortable" | "wide";
 
+export type MindmapLayout = "top-down" | "left-right";
+
 export interface Settings {
   theme: Theme;
   titlebarStyle: TitlebarStyle;
@@ -42,4 +59,5 @@ export interface Settings {
   editorWidth: EditorWidthKey;
   showFolderCounts: boolean;
   defaultFolderId: string | null;
+  mindmapLayout: MindmapLayout;
 }

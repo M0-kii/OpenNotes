@@ -4,6 +4,7 @@ import type {
   FontKey,
   LineHeightKey,
   EditorWidthKey,
+  MindmapLayout,
 } from "../types";
 
 const detectedPlatform: TitlebarStyle =
@@ -21,6 +22,7 @@ export const DEFAULT_SETTINGS: Settings = {
   editorWidth: "comfortable",
   showFolderCounts: true,
   defaultFolderId: null,
+  mindmapLayout: "top-down",
 };
 
 export const FONT_SIZE_MIN = 12;
@@ -122,6 +124,10 @@ export function coerceSetting<K extends keyof Settings>(
       return (typeof raw === "boolean" ? raw : fallback) as Settings[K];
     case "defaultFolderId":
       return (typeof raw === "string" || raw === null
+        ? raw
+        : fallback) as Settings[K];
+    case "mindmapLayout":
+      return (raw === "top-down" || raw === "left-right"
         ? raw
         : fallback) as Settings[K];
     default:

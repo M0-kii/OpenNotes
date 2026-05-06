@@ -31,6 +31,7 @@ export async function initDb(): Promise<void> {
       title TEXT NOT NULL DEFAULT '',
       content TEXT NOT NULL DEFAULT '',
       position INTEGER NOT NULL DEFAULT 0,
+      note_type TEXT NOT NULL DEFAULT 'note',
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`
@@ -64,6 +65,13 @@ export async function initDb(): Promise<void> {
   }
   try {
     await database.execute("ALTER TABLE notes ADD COLUMN position INTEGER NOT NULL DEFAULT 0");
+  } catch (e) {
+    if (!String(e).toLowerCase().includes("duplicate column")) {
+      throw e;
+    }
+  }
+  try {
+    await database.execute("ALTER TABLE notes ADD COLUMN note_type TEXT NOT NULL DEFAULT 'note'");
   } catch (e) {
     if (!String(e).toLowerCase().includes("duplicate column")) {
       throw e;
@@ -199,7 +207,8 @@ export async function getNoteById(id: string): Promise<Note | null> {
 
 export async function createNote(
   id: string,
-  folderId?: string | null
+  folderId?: string | null,
+  noteType: "note" | "mindmap" = "note"
 ): Promise<Note> {
   const database = await getDb();
   const now = new Date().toISOString();
@@ -210,14 +219,15 @@ export async function createNote(
     [targetFolderId]
   );
   await database.execute(
-    "INSERT INTO notes (id, title, content, position, folder_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-    [id, "", "", 0, targetFolderId, now, now]
+    "INSERT INTO notes (id, title, content, position, note_type, folder_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+    [id, "", "", 0, noteType, targetFolderId, now, now]
   );
   return {
     id,
     title: "",
     content: "",
     position: 0,
+    note_type: noteType,
     folder_id: targetFolderId,
     created_at: now,
     updated_at: now,
