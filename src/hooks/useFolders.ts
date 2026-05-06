@@ -43,16 +43,7 @@ export function useFolders() {
     async (name: string): Promise<Folder | null> => {
       try {
         const folder = await db.createFolder(name);
-        setFolders((prev) =>
-          [...prev, folder].sort((a, b) => {
-            if (a.is_default !== b.is_default) {
-              return b.is_default - a.is_default;
-            }
-            return a.name.localeCompare(b.name, undefined, {
-              sensitivity: "base",
-            });
-          })
-        );
+        setFolders((prev) => [...prev, folder]);
         return folder;
       } catch (e) {
         console.error("Failed to create folder:", e);
@@ -69,20 +60,11 @@ export function useFolders() {
       console.error("Failed to rename folder:", e);
     }
     setFolders((prev) =>
-      prev
-        .map((f) =>
-          f.id === id
-            ? { ...f, name, updated_at: new Date().toISOString() }
-            : f
-        )
-        .sort((a, b) => {
-          if (a.is_default !== b.is_default) {
-            return b.is_default - a.is_default;
-          }
-          return a.name.localeCompare(b.name, undefined, {
-            sensitivity: "base",
-          });
-        })
+      prev.map((f) =>
+        f.id === id
+          ? { ...f, name, updated_at: new Date().toISOString() }
+          : f
+      )
     );
   }, []);
 
@@ -107,6 +89,23 @@ export function useFolders() {
     setSelectedFolderId(id);
   }, []);
 
+  const reorderFolders = useCallback(async (orderedIds: string[]) => {
+    setFolders((prev) => {
+      const byId = new Map(prev.map((f) => [f.id, f]));
+      return orderedIds
+        .map((id, i) => {
+          const f = byId.get(id);
+          return f ? { ...f, position: i } : null;
+        })
+        .filter(Boolean) as Folder[];
+    });
+    try {
+      await db.reorderFolders(orderedIds);
+    } catch (e) {
+      console.error("Failed to reorder folders:", e);
+    }
+  }, []);
+
   return {
     folders,
     selectedFolderId,
@@ -117,6 +116,7 @@ export function useFolders() {
     renameFolder,
     deleteFolder,
     selectFolder,
+    reorderFolders,
     refreshFolders,
   };
 }

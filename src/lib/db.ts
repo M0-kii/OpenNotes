@@ -19,6 +19,7 @@ export async function initDb(): Promise<void> {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       is_default INTEGER NOT NULL DEFAULT 0,
+      position INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`
@@ -29,6 +30,7 @@ export async function initDb(): Promise<void> {
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL DEFAULT '',
       content TEXT NOT NULL DEFAULT '',
+      position INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`
@@ -46,6 +48,22 @@ export async function initDb(): Promise<void> {
   // ALTER ... IF NOT EXISTS, so we swallow the duplicate-column error).
   try {
     await database.execute("ALTER TABLE notes ADD COLUMN folder_id TEXT");
+  } catch (e) {
+    if (!String(e).toLowerCase().includes("duplicate column")) {
+      throw e;
+    }
+  }
+
+  // Add position columns if missing (for drag-to-reorder).
+  try {
+    await database.execute("ALTER TABLE folders ADD COLUMN position INTEGER NOT NULL DEFAULT 0");
+  } catch (e) {
+    if (!String(e).toLowerCase().includes("duplicate column")) {
+      throw e;
+    }
+  }
+  try {
+    await database.execute("ALTER TABLE notes ADD COLUMN position INTEGER NOT NULL DEFAULT 0");
   } catch (e) {
     if (!String(e).toLowerCase().includes("duplicate column")) {
       throw e;
@@ -94,7 +112,7 @@ export async function getDefaultFolderId(): Promise<string> {
 export async function getAllFolders(): Promise<Folder[]> {
   const database = await getDb();
   return await database.select<Folder[]>(
-    "SELECT * FROM folders ORDER BY is_default DESC, name COLLATE NOCASE ASC"
+    "SELECT * FROM folders ORDER BY position ASC, name COLLATE NOCASE ASC"
   );
 }
 
@@ -102,14 +120,20 @@ export async function createFolder(name: string): Promise<Folder> {
   const database = await getDb();
   const id = generateId();
   const now = new Date().toISOString();
+  // Place at end: position = max position + 1
+  const rows = await database.select<{ m: number | null }[]>(
+    "SELECT MAX(position) as m FROM folders"
+  );
+  const position = (rows[0]?.m ?? -1) + 1;
   await database.execute(
-    "INSERT INTO folders (id, name, is_default, created_at, updated_at) VALUES ($1, $2, 0, $3, $4)",
-    [id, name, now, now]
+    "INSERT INTO folders (id, name, is_default, position, created_at, updated_at) VALUES ($1, $2, 0, $3, $4, $5)",
+    [id, name, position, now, now]
   );
   return {
     id,
     name,
     is_default: 0,
+    position,
     created_at: now,
     updated_at: now,
   };
@@ -155,12 +179,12 @@ export async function getAllNotes(folderId?: string | null): Promise<Note[]> {
   const database = await getDb();
   if (folderId) {
     return await database.select<Note[]>(
-      "SELECT * FROM notes WHERE folder_id = $1 ORDER BY updated_at DESC",
+      "SELECT * FROM notes WHERE folder_id = $1 ORDER BY position ASC, updated_at DESC",
       [folderId]
     );
   }
   return await database.select<Note[]>(
-    "SELECT * FROM notes ORDER BY updated_at DESC"
+    "SELECT * FROM notes ORDER BY position ASC, updated_at DESC"
   );
 }
 
@@ -180,14 +204,20 @@ export async function createNote(
   const database = await getDb();
   const now = new Date().toISOString();
   const targetFolderId = folderId ?? (await getDefaultFolderId());
+  // Place at start: position = 0, shift existing notes down
   await database.execute(
-    "INSERT INTO notes (id, title, content, folder_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)",
-    [id, "", "", targetFolderId, now, now]
+    "UPDATE notes SET position = position + 1 WHERE folder_id = $1",
+    [targetFolderId]
+  );
+  await database.execute(
+    "INSERT INTO notes (id, title, content, position, folder_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+    [id, "", "", 0, targetFolderId, now, now]
   );
   return {
     id,
     title: "",
     content: "",
+    position: 0,
     folder_id: targetFolderId,
     created_at: now,
     updated_at: now,
@@ -252,12 +282,12 @@ export async function searchNotes(
   const searchTerm = `%${query}%`;
   if (folderId) {
     return await database.select<Note[]>(
-      "SELECT * FROM notes WHERE folder_id = $1 AND (title LIKE $2 OR content LIKE $3) ORDER BY updated_at DESC",
+      "SELECT * FROM notes WHERE folder_id = $1 AND (title LIKE $2 OR content LIKE $3) ORDER BY position ASC, updated_at DESC",
       [folderId, searchTerm, searchTerm]
     );
   }
   return await database.select<Note[]>(
-    "SELECT * FROM notes WHERE title LIKE $1 OR content LIKE $2 ORDER BY updated_at DESC",
+    "SELECT * FROM notes WHERE title LIKE $1 OR content LIKE $2 ORDER BY position ASC, updated_at DESC",
     [searchTerm, searchTerm]
   );
 }
@@ -288,4 +318,38 @@ export async function setSetting(key: string, value: unknown): Promise<void> {
      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
     [key, json, now]
   );
+}
+
+export async function reorderFolders(orderedIds: string[]): Promise<void> {
+  const database = await getDb();
+  await database.execute("BEGIN");
+  try {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await database.execute(
+        "UPDATE folders SET position = $1 WHERE id = $2",
+        [i, orderedIds[i]]
+      );
+    }
+    await database.execute("COMMIT");
+  } catch (e) {
+    await database.execute("ROLLBACK");
+    throw e;
+  }
+}
+
+export async function reorderNotes(orderedIds: string[]): Promise<void> {
+  const database = await getDb();
+  await database.execute("BEGIN");
+  try {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await database.execute(
+        "UPDATE notes SET position = $1 WHERE id = $2",
+        [i, orderedIds[i]]
+      );
+    }
+    await database.execute("COMMIT");
+  } catch (e) {
+    await database.execute("ROLLBACK");
+    throw e;
+  }
 }

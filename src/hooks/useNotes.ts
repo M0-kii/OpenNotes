@@ -172,6 +172,23 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
     [selectedId, flushSave]
   );
 
+  const reorderNotes = useCallback(async (orderedIds: string[]) => {
+    setNotes((prev) => {
+      const byId = new Map(prev.map((n) => [n.id, n]));
+      return orderedIds
+        .map((id, i) => {
+          const n = byId.get(id);
+          return n ? { ...n, position: i } : null;
+        })
+        .filter(Boolean) as Note[];
+    });
+    try {
+      await db.reorderNotes(orderedIds);
+    } catch (e) {
+      console.error("Failed to reorder notes:", e);
+    }
+  }, []);
+
   useEffect(() => {
     return () => {
       flushSave();
@@ -191,6 +208,7 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
     deleteNote,
     renameNote,
     selectNote,
+    reorderNotes,
     saveNoteContent,
     flushSave,
     refreshNotes,

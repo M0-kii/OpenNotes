@@ -3,6 +3,7 @@ export interface Note {
   title: string;
   content: string;
   folder_id: string | null;
+  position: number;
   created_at: string;
   updated_at: string;
 }
@@ -11,6 +12,7 @@ export interface Folder {
   id: string;
   name: string;
   is_default: number;
+  position: number;
   created_at: string;
   updated_at: string;
 }
