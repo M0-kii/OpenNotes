@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { X as CloseIcon } from "lucide-react";
 import EditorContextMenu from "./ui/EditorContextMenu";
 import type { Note } from "../types";
 
@@ -7,12 +8,24 @@ interface EditorProps {
   note: Note | null;
   onContentChange: (id: string, content: string) => void;
   onTitleChange?: (id: string, title: string) => void;
+  // Active pane gets a left-edge accent line. Defaults to true so
+  // single-pane usage is unchanged.
+  isActive?: boolean;
+  // Called when the user focuses anywhere within this editor — App
+  // uses this to mark this pane active.
+  onFocus?: () => void;
+  // When provided, renders a close button in the editor's chrome.
+  // Only meaningful in split mode.
+  onClose?: () => void;
 }
 
 export default function Editor({
   note,
   onContentChange,
   onTitleChange,
+  isActive = true,
+  onFocus,
+  onClose,
 }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const lastContentRef = useRef<string>("");
@@ -105,7 +118,38 @@ export default function Editor({
   );
 
   return (
-    <div className="flex-1 flex flex-col bg-editor-bg overflow-hidden">
+    <div
+      onMouseDownCapture={onFocus}
+      onFocusCapture={onFocus}
+      className={`flex-1 min-w-0 flex flex-col bg-editor-bg overflow-hidden
+                  relative transition-colors duration-150
+                  ${isActive ? "" : "opacity-[0.92]"}`}
+    >
+      {/* Active pane indicator — 2px accent line on the left edge.
+          Hidden when single-pane (parent passes isActive=true and no
+          onClose, so the indicator would be redundant). */}
+      {onClose && (
+        <div
+          aria-hidden
+          className={`pointer-events-none absolute left-0 top-0 bottom-0 w-[2px]
+                      transition-colors duration-200
+                      ${isActive ? "bg-accent" : "bg-transparent"}`}
+        />
+      )}
+      {onClose && (
+        <button
+          onClick={onClose}
+          aria-label="Close split"
+          title="Close split (⌘W)"
+          className="absolute top-3 right-3 z-10 p-1 rounded-md
+                     text-editor-text/30 hover:text-editor-text/70
+                     hover:bg-black/[0.04] dark:hover:bg-white/[0.05]
+                     transition-colors"
+        >
+          <CloseIcon className="w-3.5 h-3.5" strokeWidth={2} />
+        </button>
+      )}
+      <div className="flex-1 flex flex-col overflow-hidden">
       <AnimatePresence mode="wait">
         {!note ? (
           <motion.div
@@ -216,6 +260,7 @@ export default function Editor({
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }
