@@ -43,7 +43,7 @@ export const FONT_OPTIONS: FontOption[] = [
     key: "heebo",
     label: "Heebo",
     cssStack: '"Heebo Variable", system-ui, sans-serif',
-    sample: "The quick brown fox · שלום עולם",
+    sample: "The quick brown fox jumps over the lazy dog",
   },
   {
     key: "lora",
