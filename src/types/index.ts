@@ -15,4 +15,25 @@ export interface Folder {
   updated_at: string;
 }
 
-export type Theme = "light" | "dark";
+export type Theme = "light" | "dark" | "system";
+
+export type FontKey =
+  | "system"
+  | "geist"
+  | "heebo"
+  | "lora"
+  | "fraunces"
+  | "jetbrains-mono";
+
+export type LineHeightKey = "tight" | "normal" | "relaxed";
+export type EditorWidthKey = "narrow" | "comfortable" | "wide";
+
+export interface Settings {
+  theme: Theme;
+  editorFont: FontKey;
+  editorFontSize: number;
+  editorLineHeight: LineHeightKey;
+  editorWidth: EditorWidthKey;
+  showFolderCounts: boolean;
+  defaultFolderId: string | null;
+}
