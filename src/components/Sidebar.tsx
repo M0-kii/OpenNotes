@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, Settings as SettingsIcon } from "lucide-react";
 import type { Note } from "../types";
 import SearchBar from "./SearchBar";
 import ThemeToggle from "./ThemeToggle";
@@ -19,6 +19,7 @@ interface SidebarProps {
   onRename: (id: string, title: string) => void;
   theme: Theme;
   onToggleTheme: () => void;
+  onOpenSettings: () => void;
 }
 
 export default function Sidebar({
@@ -33,6 +34,7 @@ export default function Sidebar({
   onRename,
   theme,
   onToggleTheme,
+  onOpenSettings,
 }: SidebarProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -77,6 +79,19 @@ export default function Sidebar({
         </h1>
         <div className="flex items-center gap-1">
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+          <motion.button
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
+            onClick={onOpenSettings}
+            className="p-1.5 rounded-btn text-sidebar-textSecondary/70
+                       hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
+                       hover:text-sidebar-textSecondary
+                       transition-colors duration-200"
+            title="Settings (⌘,)"
+            aria-label="Settings"
+          >
+            <SettingsIcon className="w-[15px] h-[15px]" strokeWidth={1.75} />
+          </motion.button>
           <motion.button
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
