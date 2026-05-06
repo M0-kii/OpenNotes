@@ -16,6 +16,9 @@ interface FoldersSidebarProps {
   folders: FolderType[];
   selectedFolderId: string | null;
   defaultFolderId: string | null;
+  noteCounts: Record<string, number>;
+  totalNoteCount: number;
+  showFolderCounts: boolean;
   onSelectFolder: (id: string | null) => void;
   onCreateFolder: (name: string) => void;
   onRenameFolder: (id: string, name: string) => void;
@@ -28,6 +31,9 @@ export default function FoldersSidebar({
   folders,
   selectedFolderId,
   defaultFolderId,
+  noteCounts,
+  totalNoteCount,
+  showFolderCounts,
   onSelectFolder,
   onCreateFolder,
   onRenameFolder,
@@ -264,12 +270,17 @@ export default function FoldersSidebar({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -8 }}
                   transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                  className="text-[12px] font-medium text-sidebar-text tracking-[-0.01em] whitespace-nowrap"
+                  className="flex-1 text-[12px] font-medium text-sidebar-text tracking-[-0.01em] whitespace-nowrap"
                 >
                   All Notes
                 </motion.span>
               )}
             </AnimatePresence>
+            {!collapsed && showFolderCounts && totalNoteCount > 0 && (
+              <span className="text-[11px] tabular-nums text-sidebar-textSecondary/55 tracking-[-0.005em]">
+                {totalNoteCount}
+              </span>
+            )}
           </motion.button>
         </div>
 
@@ -386,6 +397,14 @@ export default function FoldersSidebar({
                           </motion.span>
                         )}
                       </AnimatePresence>
+                      {!collapsed &&
+                        showFolderCounts &&
+                        !isHovered &&
+                        (noteCounts[folder.id] ?? 0) > 0 && (
+                          <span className="text-[11px] tabular-nums text-sidebar-textSecondary/55 tracking-[-0.005em]">
+                            {noteCounts[folder.id]}
+                          </span>
+                        )}
                       <AnimatePresence>
                         {!collapsed && (
                           <motion.div

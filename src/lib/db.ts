@@ -234,6 +234,16 @@ export async function getNoteCountInFolder(
   return rows[0].c;
 }
 
+export async function getNoteCountsByFolder(): Promise<Record<string, number>> {
+  const database = await getDb();
+  const rows = await database.select<{ folder_id: string; c: number }[]>(
+    "SELECT folder_id, COUNT(*) as c FROM notes WHERE folder_id IS NOT NULL GROUP BY folder_id"
+  );
+  const out: Record<string, number> = {};
+  for (const row of rows) out[row.folder_id] = row.c;
+  return out;
+}
+
 export async function searchNotes(
   query: string,
   folderId?: string | null
