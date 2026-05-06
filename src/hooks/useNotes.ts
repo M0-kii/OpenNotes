@@ -18,7 +18,9 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingSaveRef = useRef<{ id: string; content: string } | null>(null);
+  // Per-id queue so two editors editing different notes can't clobber
+  // each other within the debounce window.
+  const pendingSavesRef = useRef<Map<string, string>>(new Map());
   const initialLoadDone = useRef(false);
 
   useEffect(() => {
@@ -79,9 +81,10 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
   }, [notes, selectedId]);
 
   const flushSave = useCallback(async () => {
-    if (pendingSaveRef.current) {
-      const { id, content } = pendingSaveRef.current;
-      pendingSaveRef.current = null;
+    if (pendingSavesRef.current.size === 0) return;
+    const entries = Array.from(pendingSavesRef.current.entries());
+    pendingSavesRef.current.clear();
+    for (const [id, content] of entries) {
       try {
         await db.updateNoteContent(id, content);
         setNotes((prev) =>
@@ -106,7 +109,7 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
             : n
         )
       );
-      pendingSaveRef.current = { id, content };
+      pendingSavesRef.current.set(id, content);
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => flushSave(), 500);
     },
