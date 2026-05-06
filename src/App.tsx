@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNotes } from "./hooks/useNotes";
 import { useFolders } from "./hooks/useFolders";
 import { useSettings } from "./hooks/useSettings";
@@ -8,6 +8,7 @@ import Editor from "./components/Editor";
 import TitleBar from "./components/TitleBar";
 import ConfirmDialog from "./components/ConfirmDialog";
 import SettingsApplier from "./components/settings/SettingsApplier";
+import SettingsDialog from "./components/settings/SettingsDialog";
 import { getNoteCountInFolder } from "./lib/db";
 
 export default function App() {
@@ -49,6 +50,19 @@ export default function App() {
     id: string;
     title: string;
   } | null>(null);
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === ",") {
+        e.preventDefault();
+        setSettingsOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const handleDeleteNoteRequest = useCallback((id: string) => {
     const note = notes.find((n) => n.id === id);
@@ -140,6 +154,7 @@ export default function App() {
           onRename={renameNote}
           theme={theme}
           onToggleTheme={toggleTheme}
+          onOpenSettings={() => setSettingsOpen(true)}
         />
         <Editor
           note={selectedNote}
@@ -188,6 +203,14 @@ export default function App() {
           if (pendingNoteDelete) deleteNote(pendingNoteDelete.id);
           setPendingNoteDelete(null);
         }}
+      />
+
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        settings={settings}
+        folders={folders.folders}
+        onChange={updateSetting}
       />
     </div>
   );
