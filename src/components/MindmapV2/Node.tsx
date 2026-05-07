@@ -53,6 +53,7 @@ export default function Node({
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Focus + select on entering edit mode. Re-runs only on the transition.
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
@@ -60,8 +61,34 @@ export default function Node({
     }
   }, [isEditing]);
 
+  // Click-outside confirm. Replaces input.onBlur which is unreliable under
+  // re-renders (a stray blur — e.g., from a focus shuffle during a save
+  // echo or framer-motion mount — used to fire onConfirmEdit and snap the
+  // input out of edit mode mid-keystroke). The capture-phase document
+  // listener fires before the new target's own handlers, so clicking
+  // another node also commits cleanly.
+  useEffect(() => {
+    if (!isEditing) return;
+    const handle = (e: MouseEvent) => {
+      const input = inputRef.current;
+      if (!input) return;
+      const target = e.target;
+      if (target instanceof globalThis.Node && input.contains(target)) return;
+      onConfirmEdit();
+    };
+    document.addEventListener("mousedown", handle, true);
+    return () => document.removeEventListener("mousedown", handle, true);
+  }, [isEditing, onConfirmEdit]);
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
+    // While editing this node, mousedown is the user positioning the
+    // caret — don't re-select or start a drag (which would set isDragging
+    // and shuffle dragShadow, possibly stealing focus).
+    if (isEditing) {
+      e.stopPropagation();
+      return;
+    }
     e.stopPropagation();
     onSelect();
     setIsDragging(true);
@@ -122,7 +149,6 @@ export default function Node({
             type="text"
             value={editText}
             onChange={(e) => onEditChange(e.target.value)}
-            onBlur={onConfirmEdit}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -133,9 +159,14 @@ export default function Node({
                 onCancelEdit();
               }
             }}
+            // Stop bubbling so the canvas's pan handler doesn't grab the
+            // mousedown and steal focus while the user is positioning the
+            // cursor inside the input.
+            onMouseDown={(e) => e.stopPropagation()}
             className="w-[90%] text-center bg-transparent text-[13px] text-editor-text
                        outline-none font-medium tracking-[-0.01em]"
             spellCheck={false}
+            autoFocus
           />
         ) : (
           <span
