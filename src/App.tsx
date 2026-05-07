@@ -7,6 +7,7 @@ import FoldersSidebar from "./components/FoldersSidebar";
 import Sidebar from "./components/Sidebar";
 import Editor from "./components/Editor";
 import MindmapEditor from "./components/MindmapEditor";
+import MindmapEditorV2 from "./components/MindmapEditorV2";
 import TitleBar from "./components/TitleBar";
 import ConfirmDialog from "./components/ConfirmDialog";
 import SettingsApplier from "./components/settings/SettingsApplier";
@@ -390,12 +391,20 @@ export default function App() {
             style={{ flex: `${splitNoteId ? splitRatio : 1} 1 0` }}
           >
             {selectedNote?.note_type === "mindmap" ? (
-              <MindmapEditor
-                note={selectedNote}
-                layout={settings.mindmapLayout}
-                onContentChange={saveNoteContent}
-                onTitleChange={renameNote}
-              />
+              settings.mindmapV2Enabled ? (
+                <MindmapEditorV2
+                  note={selectedNote}
+                  onContentChange={saveNoteContent}
+                  onTitleChange={renameNote}
+                />
+              ) : (
+                <MindmapEditor
+                  note={selectedNote}
+                  layout={settings.mindmapLayout}
+                  onContentChange={saveNoteContent}
+                  onTitleChange={renameNote}
+                />
+              )
             ) : (
               <Editor
                 note={selectedNote}
@@ -418,12 +427,20 @@ export default function App() {
                 style={{ flex: `${1 - splitRatio} 1 0` }}
               >
                 {rightNote?.note_type === "mindmap" ? (
-                  <MindmapEditor
-                    note={rightNote}
-                    layout={settings.mindmapLayout}
-                    onContentChange={handleRightContentChange}
-                    onTitleChange={handleRightTitleChange}
-                  />
+                  settings.mindmapV2Enabled ? (
+                    <MindmapEditorV2
+                      note={rightNote}
+                      onContentChange={handleRightContentChange}
+                      onTitleChange={handleRightTitleChange}
+                    />
+                  ) : (
+                    <MindmapEditor
+                      note={rightNote}
+                      layout={settings.mindmapLayout}
+                      onContentChange={handleRightContentChange}
+                      onTitleChange={handleRightTitleChange}
+                    />
+                  )
                 ) : (
                   <Editor
                     note={rightNote}
