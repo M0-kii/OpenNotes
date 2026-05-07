@@ -489,8 +489,8 @@ export default function SettingsDialog({
                         >
                           <motion.div variants={rowItem}>
                             <SettingsRow
-                              label="New editor (preview)"
-                              description="Graph-first rebuild with hybrid pinning, undo, collapse, and three layouts. Reversible — turn off to return to the current editor."
+                              label="New editor"
+                              description="Graph-first rebuild with hybrid pinning, undo, collapse, and three layouts. Turn off to fall back to the legacy editor."
                             >
                               <ToggleSwitch
                                 checked={settings.mindmapV2Enabled}

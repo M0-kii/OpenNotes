@@ -23,7 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showFolderCounts: true,
   defaultFolderId: null,
   mindmapLayout: "top-down",
-  mindmapV2Enabled: false,
+  mindmapV2Enabled: true,
   discordRpcEnabled: false,
   highContrast: false,
   largerText: false,
