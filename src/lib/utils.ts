@@ -1,4 +1,4 @@
-import type { NoteType, MindmapData } from "../types";
+import type { NoteType } from "../types";
 
 export function generateId(): string {
   const timestamp = Date.now().toString(36);
@@ -30,10 +30,13 @@ export function getNotePreview(content: string, noteType: NoteType, maxLength = 
   let text: string;
   if (noteType === "mindmap") {
     try {
-      const data: MindmapData = JSON.parse(content);
-      text = data.nodes
-        .filter((n) => n.text)
-        .map((n) => n.text)
+      const raw = JSON.parse(content) as { nodes?: Array<{ text?: string }> };
+      // Both v1 ({nodes:[{x,y,text}]}) and v2 ({schemaVersion:2, nodes:[{text}]})
+      // store node text in the same shape, so a single read works for both.
+      const nodes = Array.isArray(raw?.nodes) ? raw.nodes : [];
+      text = nodes
+        .map((n) => (typeof n.text === "string" ? n.text : ""))
+        .filter(Boolean)
         .join(" · ") || "Empty mind map";
     } catch {
       text = content;
