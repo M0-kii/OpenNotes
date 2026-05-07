@@ -5,7 +5,6 @@
 // source of truth; positions are derived at render time by the layout engine.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Maximize, ZoomIn, ZoomOut } from "lucide-react";
 import type { LayoutMode, MindmapGraphV2, Operation } from "../lib/mindmap/types";
 import type { Note } from "../types";
 import { user } from "../lib/mindmap/operations";
@@ -21,20 +20,20 @@ import {
 import { generateId } from "../lib/utils";
 import Connections from "./MindmapV2/Connections";
 import Node from "./MindmapV2/Node";
+import Toolbar from "./MindmapV2/Toolbar";
 
 interface Props {
   note: Note | null;
-  mode: LayoutMode;
   onContentChange: (id: string, content: string) => void;
   onTitleChange: (id: string, title: string) => void;
 }
 
 export default function MindmapEditorV2({
   note,
-  mode,
   onContentChange,
   onTitleChange,
 }: Props) {
+  const [mode, setMode] = useState<LayoutMode>("tree");
   const containerRef = useRef<HTMLDivElement>(null);
   const noteIdRef = useRef<string | null>(null);
 
@@ -142,6 +141,18 @@ export default function MindmapEditorV2({
     () => graph.nodes.filter((n) => !hidden.has(n.id)),
     [graph.nodes, hidden],
   );
+
+  const pinnedCount = useMemo(
+    () => graph.nodes.reduce((acc, n) => acc + (n.pin ? 1 : 0), 0),
+    [graph.nodes],
+  );
+
+  const resetPositions = useCallback(() => {
+    const ops: Operation[] = graph.nodes
+      .filter((n) => n.pin)
+      .map((n) => ({ kind: "unpin_node" as const, id: n.id }));
+    if (ops.length > 0) dispatch(ops);
+  }, [dispatch, graph.nodes]);
 
   const childCount = useMemo(() => {
     const m = new Map<string, number>();
@@ -361,38 +372,19 @@ export default function MindmapEditorV2({
       </div>
 
       {graph.nodes.length > 0 && (
-        <div className="px-10 pb-2 flex items-center gap-1.5">
-          <span className="text-[11px] text-editor-text/35 tracking-[-0.01em] tabular-nums">
-            {Math.round(zoom * 100)}%
-          </span>
-          <button
-            onClick={() => setZoom((z) => Math.max(0.2, z / 1.2))}
-            className="p-1 rounded-md text-editor-text/30 hover:text-editor-text/60
-                       hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
-            title="Zoom out"
-          >
-            <ZoomOut className="w-3.5 h-3.5" strokeWidth={1.5} />
-          </button>
-          <button
-            onClick={() => setZoom((z) => Math.min(3, z * 1.2))}
-            className="p-1 rounded-md text-editor-text/30 hover:text-editor-text/60
-                       hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
-            title="Zoom in"
-          >
-            <ZoomIn className="w-3.5 h-3.5" strokeWidth={1.5} />
-          </button>
-          <button
-            onClick={() => {
-              setZoom(1);
-              setPan({ x: 0, y: 0 });
-            }}
-            className="p-1 rounded-md text-editor-text/30 hover:text-editor-text/60
-                       hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors ml-0.5"
-            title="Reset zoom & pan"
-          >
-            <Maximize className="w-3.5 h-3.5" strokeWidth={1.5} />
-          </button>
-        </div>
+        <Toolbar
+          mode={mode}
+          onModeChange={setMode}
+          zoom={zoom}
+          onZoomIn={() => setZoom((z) => Math.min(3, z * 1.2))}
+          onZoomOut={() => setZoom((z) => Math.max(0.2, z / 1.2))}
+          onResetView={() => {
+            setZoom(1);
+            setPan({ x: 0, y: 0 });
+          }}
+          onResetPositions={resetPositions}
+          resetPositionsDisabled={pinnedCount === 0}
+        />
       )}
 
       <div
