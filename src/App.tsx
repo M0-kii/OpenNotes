@@ -265,7 +265,12 @@ export default function App() {
     }).catch(() => {
       // Silently ignore — Discord may not be running.
     });
-  }, [settings.discordRpcEnabled, selectedNote]);
+  }, [
+    settings.discordRpcEnabled,
+    selectedNote?.id,
+    selectedNote?.note_type,
+    selectedNote?.title,
+  ]);
 
   const isLoading = folders.isLoading || notesLoading || !settingsLoaded;
   const error = folders.error || notesError;
