@@ -146,6 +146,22 @@ export default function MindmapEditorV2({
     [graph.nodes],
   );
 
+  const rootId = useMemo(
+    () => graph.nodes.find((n) => n.parentId === null)?.id ?? null,
+    [graph.nodes],
+  );
+
+  const centerOnRoot = useCallback(() => {
+    if (!rootId || !containerRef.current) return;
+    const pos = positions.get(rootId);
+    if (!pos) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setPan({
+      x: rect.width / 2 - pos.x * zoom,
+      y: rect.height / 2 - pos.y * zoom,
+    });
+  }, [rootId, positions, zoom]);
+
   const resetPositions = useCallback(() => {
     const ops: Operation[] = graph.nodes
       .filter((n) => n.pin)
@@ -383,6 +399,8 @@ export default function MindmapEditorV2({
           }}
           onResetPositions={resetPositions}
           resetPositionsDisabled={pinnedCount === 0}
+          onCenter={centerOnRoot}
+          centerDisabled={rootId === null}
         />
       )}
 

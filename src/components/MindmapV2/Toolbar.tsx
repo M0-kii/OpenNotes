@@ -1,4 +1,4 @@
-import { Maximize, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import { Locate, Maximize, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import type { LayoutMode } from "../../lib/mindmap/types";
 
 interface Props {
@@ -10,6 +10,8 @@ interface Props {
   onResetView: () => void;
   onResetPositions: () => void;
   resetPositionsDisabled: boolean;
+  onCenter: () => void;
+  centerDisabled: boolean;
   // Future hookup: AI generation lock. Surface ships now, behavior later.
   aiBusy?: boolean;
 }
@@ -29,6 +31,8 @@ export default function Toolbar({
   onResetView,
   onResetPositions,
   resetPositionsDisabled,
+  onCenter,
+  centerDisabled,
   aiBusy,
 }: Props) {
   return (
@@ -70,6 +74,18 @@ export default function Toolbar({
       >
         <RotateCcw className="w-3 h-3" strokeWidth={1.75} />
         Reset positions
+      </button>
+
+      <button
+        onClick={onCenter}
+        disabled={centerDisabled}
+        className="text-[11px] tracking-[-0.01em] text-editor-text/45
+                   hover:text-editor-text/80 transition-colors flex items-center gap-1
+                   disabled:opacity-40 disabled:hover:text-editor-text/45 disabled:cursor-default"
+        title="Center on root"
+      >
+        <Locate className="w-3 h-3" strokeWidth={1.75} />
+        Center
       </button>
 
       <div className="flex-1" />
