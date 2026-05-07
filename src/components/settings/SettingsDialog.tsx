@@ -489,8 +489,22 @@ export default function SettingsDialog({
                         >
                           <motion.div variants={rowItem}>
                             <SettingsRow
+                              label="New editor (preview)"
+                              description="Graph-first rebuild with hybrid pinning, undo, collapse, and three layouts. Reversible — turn off to return to the current editor."
+                            >
+                              <ToggleSwitch
+                                checked={settings.mindmapV2Enabled}
+                                onChange={(v) =>
+                                  onChange("mindmapV2Enabled", v)
+                                }
+                              />
+                            </SettingsRow>
+                          </motion.div>
+
+                          <motion.div variants={rowItem}>
+                            <SettingsRow
                               label="Default layout"
-                              description="Direction child nodes extend from the root."
+                              description="Direction child nodes extend from the root. Used by the current editor; the new editor picks layout per-map in its toolbar."
                               icon={GitBranch}
                             >
                               <SegmentedControl<MindmapLayout>

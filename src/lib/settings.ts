@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showFolderCounts: true,
   defaultFolderId: null,
   mindmapLayout: "top-down",
+  mindmapV2Enabled: false,
   discordRpcEnabled: false,
   highContrast: false,
   largerText: false,
@@ -134,6 +135,7 @@ export function coerceSetting<K extends keyof Settings>(
       return (raw === "top-down" || raw === "left-right"
         ? raw
         : fallback) as Settings[K];
+    case "mindmapV2Enabled":
     case "discordRpcEnabled":
     case "highContrast":
     case "largerText":
