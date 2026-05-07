@@ -60,6 +60,7 @@ export interface Settings {
   showFolderCounts: boolean;
   defaultFolderId: string | null;
   mindmapLayout: MindmapLayout;
+  mindmapV2Enabled: boolean;
   discordRpcEnabled: boolean;
   highContrast: boolean;
   largerText: boolean;
