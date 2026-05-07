@@ -53,20 +53,19 @@ export default function MindmapEditorV2({
   const dragOriginRef = useRef<{ id: string; x: number; y: number } | null>(null);
   const [dragShadow, setDragShadow] = useState<{ id: string; x: number; y: number } | null>(null);
 
-  // Load note content into graph; reset transient UI on note change.
+  // Load note content into graph; reset transient UI only when the *id*
+  // changes. Same-id prop updates are our own save echoes — re-running the
+  // load body would clobber editingId/selectedId mid-interaction (the
+  // user's typing would die because the input unmounts).
   useEffect(() => {
+    const nextId = note?.id ?? null;
+    if (noteIdRef.current === nextId) return;
+    noteIdRef.current = nextId;
     if (!note) {
-      noteIdRef.current = null;
       setGraph(emptyGraph());
-      setHistory(emptyHistory());
-      setSelectedId(null);
-      setEditingId(null);
-      setZoom(1);
-      setPan({ x: 0, y: 0 });
-      return;
+    } else {
+      setGraph(parse(note.content));
     }
-    noteIdRef.current = note.id;
-    setGraph(parse(note.content));
     setHistory(emptyHistory());
     setSelectedId(null);
     setEditingId(null);
