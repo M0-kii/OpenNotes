@@ -50,6 +50,7 @@ export default function App() {
     refreshTrashedNotes,
     restoreNote,
     permanentlyDeleteNote,
+    toggleFavorite,
   } = useNotes({
     folderId: folders.selectedFolderId,
     createInFolderId: folders.selectedFolderId ?? settings.defaultFolderId,
@@ -392,6 +393,7 @@ export default function App() {
           onReorder={reorderNotes}
           onMoveToFolder={handleMoveToFolder}
           onDropInEditor={openInSplit}
+          onToggleFavorite={toggleFavorite}
         />
         <div ref={editorPaneRef} className="flex-1 flex overflow-hidden" data-editor-drop-zone="true">
           <div

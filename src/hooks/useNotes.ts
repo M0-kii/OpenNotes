@@ -219,6 +219,24 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
     );
   }, []);
 
+  const toggleFavorite = useCallback(async (id: string) => {
+    try {
+      await db.toggleFavorite(id);
+    } catch (e) {
+      console.error("Failed to toggle favorite:", e);
+      return;
+    }
+    setNotes((prev) => {
+      const updated = prev.map((n) =>
+        n.id === id ? { ...n, is_favorite: n.is_favorite ? 0 : 1 } as Note : n
+      );
+      return updated.sort((a, b) => {
+        if (a.is_favorite !== b.is_favorite) return b.is_favorite - a.is_favorite;
+        return a.position - b.position;
+      });
+    });
+  }, []);
+
   const selectNote = useCallback(
     async (id: string) => {
       if (id === selectedId) return;
@@ -272,5 +290,6 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
     refreshTrashedNotes,
     restoreNote,
     permanentlyDeleteNote,
+    toggleFavorite,
   };
 }

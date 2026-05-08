@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Pencil, Check, X, GripVertical, FileText, GitBranch, ListTodo, ChevronLeft } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, GripVertical, FileText, GitBranch, ListTodo, ChevronLeft, Star } from "lucide-react";
 import type { Note } from "../types";
 import SearchBar from "./SearchBar";
 import GenericContextMenu from "./ui/GenericContextMenu";
@@ -37,6 +37,7 @@ interface SidebarProps {
   onReorder: (orderedIds: string[]) => void;
   onMoveToFolder?: (noteId: string, folderId: string) => void;
   onDropInEditor?: (noteId: string) => void;
+  onToggleFavorite: (id: string) => void;
 }
 
 export default function Sidebar({
@@ -54,6 +55,7 @@ export default function Sidebar({
   onReorder,
   onMoveToFolder,
   onDropInEditor,
+  onToggleFavorite,
 }: SidebarProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -213,6 +215,14 @@ export default function Sidebar({
 
       {!collapsed && <SearchBar value={searchQuery} onChange={onSearchChange} />}
 
+      {!collapsed && notes.some((n) => n.is_favorite === 1) && (
+        <div className="px-3 pt-2 pb-1">
+          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-text/40 flex items-center gap-1">
+            <Star className="w-3 h-3" /> Favorites
+          </h3>
+        </div>
+      )}
+
       {!collapsed && (
       <div className="flex-1 overflow-y-auto">
         <GenericContextMenu
@@ -249,6 +259,7 @@ export default function Sidebar({
                     onRenameValueChange={setRenameValue}
                     onConfirmRename={handleConfirmRename}
                     onCancelRename={handleCancelRename}
+                    onToggleFavorite={onToggleFavorite}
                   />
                 ))}
               </SortableContext>
@@ -287,6 +298,7 @@ function SortableNoteItem({
   onRenameValueChange,
   onConfirmRename,
   onCancelRename,
+  onToggleFavorite,
 }: {
   note: Note;
   isSelected: boolean;
@@ -299,6 +311,7 @@ function SortableNoteItem({
   onRenameValueChange: (v: string) => void;
   onConfirmRename: (e?: React.FormEvent) => void;
   onCancelRename: () => void;
+  onToggleFavorite: (id: string) => void;
 }) {
   const {
     attributes,
@@ -398,6 +411,25 @@ function SortableNoteItem({
               </motion.form>
             ) : (
               <>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite(note.id);
+                  }}
+                  className={`p-0.5 rounded-sm transition-colors mr-0.5 ${
+                    note.is_favorite === 1
+                      ? "text-accent"
+                      : "text-sidebar-text/20 group-hover:text-sidebar-text/50"
+                  }`}
+                  title={note.is_favorite === 1 ? "Unfavorite" : "Favorite"}
+                >
+                  <Star
+                    className="w-3.5 h-3.5"
+                    fill={note.is_favorite === 1 ? "currentColor" : "none"}
+                  />
+                </motion.button>
                 <div className="flex-1 min-w-0 mr-1.5">
                   <div className="text-[12px] font-medium text-sidebar-text truncate tracking-[-0.01em] leading-snug">
                     {note.title || "Untitled"}
