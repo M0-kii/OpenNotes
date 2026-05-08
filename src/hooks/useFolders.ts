@@ -68,22 +68,60 @@ export function useFolders() {
     );
   }, []);
 
-  // Reassigns the folder's notes to defaultFolderId then deletes it.
+  // Trashed folders state.
+  const [trashedFolders, setTrashedFolders] = useState<Folder[]>([]);
+
+  const refreshTrashedFolders = useCallback(async () => {
+    try {
+      const trashed = await db.getTrashedFolders();
+      setTrashedFolders(trashed);
+    } catch (e) {
+      console.error("Failed to load trashed folders:", e);
+    }
+  }, []);
+
+  // Load trashed folders on mount.
+  useEffect(() => {
+    refreshTrashedFolders();
+  }, [refreshTrashedFolders]);
+
+  // Reassigns the folder's notes to defaultFolderId then soft-deletes it.
   // Refuses to delete the default folder.
   const deleteFolder = useCallback(
     async (id: string) => {
       if (!defaultFolderId || id === defaultFolderId) return;
       try {
-        await db.deleteFolder(id, defaultFolderId);
+        await db.softDeleteFolder(id, defaultFolderId);
       } catch (e) {
         console.error("Failed to delete folder:", e);
         return;
       }
       setFolders((prev) => prev.filter((f) => f.id !== id));
       setSelectedFolderId((prev) => (prev === id ? null : prev));
+      // Refresh trashed folders so TrashView has current data.
+      refreshTrashedFolders();
     },
-    [defaultFolderId]
+    [defaultFolderId, refreshTrashedFolders]
   );
+
+  const restoreFolder = useCallback(async (id: string) => {
+    try {
+      await db.restoreFolder(id);
+      setTrashedFolders((prev) => prev.filter((f) => f.id !== id));
+      await refreshFolders();
+    } catch (e) {
+      console.error("Failed to restore folder:", e);
+    }
+  }, [refreshFolders]);
+
+  const permanentlyDeleteFolder = useCallback(async (id: string) => {
+    try {
+      await db.permanentlyDeleteFolder(id);
+      setTrashedFolders((prev) => prev.filter((f) => f.id !== id));
+    } catch (e) {
+      console.error("Failed to permanently delete folder:", e);
+    }
+  }, []);
 
   const selectFolder = useCallback((id: string | null) => {
     setSelectedFolderId(id);
@@ -118,5 +156,9 @@ export function useFolders() {
     selectFolder,
     reorderFolders,
     refreshFolders,
+    trashedFolders,
+    refreshTrashedFolders,
+    restoreFolder,
+    permanentlyDeleteFolder,
   };
 }

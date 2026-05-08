@@ -26,6 +26,8 @@ export interface Note {
   folder_id: string | null;
   position: number;
   note_type: NoteType;
+  is_favorite: number;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -34,7 +36,9 @@ export interface Folder {
   id: string;
   name: string;
   is_default: number;
+  parent_id: string | null;
   position: number;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 }

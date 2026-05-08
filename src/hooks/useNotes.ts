@@ -148,10 +148,27 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
     }
   }, [flushSave, folderId, createInFolderId]);
 
+  // Trashed notes state (loaded once on mount, refreshed on-demand).
+  const [trashedNotes, setTrashedNotes] = useState<Note[]>([]);
+
+  const refreshTrashedNotes = useCallback(async () => {
+    try {
+      const trashed = await db.getTrashedNotes();
+      setTrashedNotes(trashed);
+    } catch (e) {
+      console.error("Failed to load trashed notes:", e);
+    }
+  }, []);
+
+  // Load trashed notes on mount.
+  useEffect(() => {
+    refreshTrashedNotes();
+  }, [refreshTrashedNotes]);
+
   const deleteNote = useCallback(
     async (id: string) => {
       try {
-        await db.deleteNote(id);
+        await db.softDeleteNote(id);
       } catch (e) {
         console.error("Failed to delete note:", e);
       }
@@ -162,9 +179,30 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
         }
         return filtered;
       });
+      // Refresh trashed notes so TrashView has current data.
+      refreshTrashedNotes();
     },
-    [selectedId]
+    [selectedId, refreshTrashedNotes]
   );
+
+  const restoreNote = useCallback(async (id: string) => {
+    try {
+      await db.restoreNote(id);
+      setTrashedNotes((prev) => prev.filter((n) => n.id !== id));
+      await refreshNotes();
+    } catch (e) {
+      console.error("Failed to restore note:", e);
+    }
+  }, [refreshNotes]);
+
+  const permanentlyDeleteNote = useCallback(async (id: string) => {
+    try {
+      await db.permanentlyDeleteNote(id);
+      setTrashedNotes((prev) => prev.filter((n) => n.id !== id));
+    } catch (e) {
+      console.error("Failed to permanently delete note:", e);
+    }
+  }, []);
 
   const renameNote = useCallback(async (id: string, title: string) => {
     try {
@@ -230,5 +268,9 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
     saveNoteContent,
     flushSave,
     refreshNotes,
+    trashedNotes,
+    refreshTrashedNotes,
+    restoreNote,
+    permanentlyDeleteNote,
   };
 }
