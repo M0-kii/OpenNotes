@@ -1,6 +1,38 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Folder } from "../types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Folder, FolderNode } from "../types";
 import * as db from "../lib/db";
+
+// Builds a tree structure from a flat folder list, sorted by position at each level.
+function buildFolderTree(folders: Folder[]): FolderNode[] {
+  const map = new Map<string, FolderNode>();
+  const roots: FolderNode[] = [];
+
+  // Create nodes
+  for (const f of folders) {
+    map.set(f.id, { ...f, children: [] });
+  }
+
+  // Build tree
+  for (const f of folders) {
+    const node = map.get(f.id)!;
+    if (f.parent_id && map.has(f.parent_id)) {
+      map.get(f.parent_id)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  // Sort children by position
+  const sortChildren = (nodes: FolderNode[]) => {
+    nodes.sort((a, b) => a.position - b.position);
+    for (const n of nodes) {
+      sortChildren(n.children);
+    }
+  };
+  sortChildren(roots);
+
+  return roots;
+}
 
 // selectedFolderId === null means the "All Notes" smart folder.
 export function useFolders() {
@@ -10,6 +42,8 @@ export function useFolders() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const initialLoadDone = useRef(false);
+
+  const folderTree = useMemo(() => buildFolderTree(folders), [folders]);
 
   useEffect(() => {
     const load = async () => {
@@ -40,9 +74,9 @@ export function useFolders() {
   }, []);
 
   const createFolder = useCallback(
-    async (name: string): Promise<Folder | null> => {
+    async (name: string, parentId?: string | null): Promise<Folder | null> => {
       try {
-        const folder = await db.createFolder(name);
+        const folder = await db.createFolder(name, parentId ?? null);
         setFolders((prev) => [...prev, folder]);
         return folder;
       } catch (e) {
@@ -85,7 +119,7 @@ export function useFolders() {
     refreshTrashedFolders();
   }, [refreshTrashedFolders]);
 
-  // Reassigns the folder's notes to defaultFolderId then soft-deletes it.
+  // Soft-deletes the folder and all its descendants.
   // Refuses to delete the default folder.
   const deleteFolder = useCallback(
     async (id: string) => {
@@ -96,12 +130,12 @@ export function useFolders() {
         console.error("Failed to delete folder:", e);
         return;
       }
-      setFolders((prev) => prev.filter((f) => f.id !== id));
       setSelectedFolderId((prev) => (prev === id ? null : prev));
-      // Refresh trashed folders so TrashView has current data.
-      refreshTrashedFolders();
+      // Refresh both active and trashed folders — softDeleteFolder cascades to children.
+      await refreshFolders();
+      await refreshTrashedFolders();
     },
-    [defaultFolderId, refreshTrashedFolders]
+    [defaultFolderId, refreshFolders, refreshTrashedFolders]
   );
 
   const restoreFolder = useCallback(async (id: string) => {
@@ -144,8 +178,25 @@ export function useFolders() {
     }
   }, []);
 
+  const moveFolderToParent = useCallback(
+    async (folderId: string, newParentId: string | null) => {
+      try {
+        await db.moveFolderToParent(folderId, newParentId);
+        setFolders((prev) =>
+          prev.map((f) =>
+            f.id === folderId ? { ...f, parent_id: newParentId } : f
+          )
+        );
+      } catch (e) {
+        console.error("Failed to move folder:", e);
+      }
+    },
+    []
+  );
+
   return {
     folders,
+    folderTree,
     selectedFolderId,
     defaultFolderId,
     isLoading,
@@ -155,6 +206,7 @@ export function useFolders() {
     deleteFolder,
     selectFolder,
     reorderFolders,
+    moveFolderToParent,
     refreshFolders,
     trashedFolders,
     refreshTrashedFolders,

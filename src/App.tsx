@@ -357,6 +357,7 @@ export default function App() {
       <TitleBar style={settings.titlebarStyle} />
       <div className="flex-1 flex overflow-hidden">
         <FoldersSidebar
+          folderTree={folders.folderTree}
           folders={folders.folders}
           selectedFolderId={folders.selectedFolderId}
           defaultFolderId={folders.defaultFolderId}
@@ -364,12 +365,13 @@ export default function App() {
           totalNoteCount={totalNoteCount}
           showFolderCounts={settings.showFolderCounts}
           onSelectFolder={folders.selectFolder}
-          onCreateFolder={(name) => {
-            folders.createFolder(name);
+          onCreateFolder={(name, parentId) => {
+            folders.createFolder(name, parentId);
           }}
           onRenameFolder={folders.renameFolder}
           onDeleteFolderRequest={handleDeleteFolderRequest}
           onReorderFolders={folders.reorderFolders}
+          onMoveFolderToParent={folders.moveFolderToParent}
           onOpenSettings={() => setSettingsOpen(true)}
           onShowTrash={() => setShowTrash((s) => !s)}
         />

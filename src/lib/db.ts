@@ -158,24 +158,33 @@ export async function getAllFolders(): Promise<Folder[]> {
   );
 }
 
-export async function createFolder(name: string): Promise<Folder> {
+export async function createFolder(name: string, parentId?: string | null): Promise<Folder> {
   const database = await getDb();
   const id = generateId();
   const now = new Date().toISOString();
-  // Place at end: position = max position + 1
-  const rows = await database.select<{ m: number | null }[]>(
-    "SELECT MAX(position) as m FROM folders"
-  );
-  const position = (rows[0]?.m ?? -1) + 1;
+  // Place at end of the target level: position = max position within same parent + 1
+  let position: number;
+  if (parentId) {
+    const rows = await database.select<{ m: number | null }[]>(
+      "SELECT MAX(position) as m FROM folders WHERE parent_id = $1 AND deleted_at IS NULL",
+      [parentId]
+    );
+    position = (rows[0]?.m ?? -1) + 1;
+  } else {
+    const rows = await database.select<{ m: number | null }[]>(
+      "SELECT MAX(position) as m FROM folders WHERE parent_id IS NULL AND deleted_at IS NULL"
+    );
+    position = (rows[0]?.m ?? -1) + 1;
+  }
   await database.execute(
-    "INSERT INTO folders (id, name, is_default, position, created_at, updated_at) VALUES ($1, $2, 0, $3, $4, $5)",
-    [id, name, position, now, now]
+    "INSERT INTO folders (id, name, is_default, parent_id, position, created_at, updated_at) VALUES ($1, $2, 0, $3, $4, $5, $6)",
+    [id, name, parentId ?? null, position, now, now]
   );
   return {
     id,
     name,
     is_default: 0,
-    parent_id: null,
+    parent_id: parentId ?? null,
     position,
     deleted_at: null,
     created_at: now,
@@ -329,23 +338,46 @@ export async function softDeleteFolder(
   defaultFolderId: string
 ): Promise<void> {
   const database = await getDb();
-  // Reassign its active notes to default folder
-  await database.execute(
-    "UPDATE notes SET folder_id = $1 WHERE folder_id = $2 AND deleted_at IS NULL",
-    [defaultFolderId, id]
-  );
+  // Reassign active notes in this folder and all descendant folders to default folder
+  const descendantIds = await collectDescendantFolderIds(id);
+  const allFolderIds = [id, ...descendantIds];
+  for (const fid of allFolderIds) {
+    await database.execute(
+      "UPDATE notes SET folder_id = $1 WHERE folder_id = $2 AND deleted_at IS NULL",
+      [defaultFolderId, fid]
+    );
+  }
+  // Soft-delete the folder itself
   await database.execute(
     "UPDATE folders SET deleted_at = datetime('now') WHERE id = $1 AND is_default = 0",
     [id]
   );
+  // Soft-delete all descendant folders
+  if (descendantIds.length > 0) {
+    const placeholders = descendantIds.map((_, i) => `$${i + 1}`).join(", ");
+    await database.execute(
+      `UPDATE folders SET deleted_at = datetime('now') WHERE id IN (${placeholders}) AND is_default = 0`,
+      descendantIds
+    );
+  }
 }
 
 export async function restoreFolder(id: string): Promise<void> {
   const database = await getDb();
+  // Restore the folder itself
   await database.execute(
     "UPDATE folders SET deleted_at = NULL WHERE id = $1",
     [id]
   );
+  // Restore all descendant folders that were soft-deleted as part of this tree
+  const descendantIds = await collectDescendantFolderIdsForRestore(id);
+  if (descendantIds.length > 0) {
+    const placeholders = descendantIds.map((_, i) => `$${i + 1}`).join(", ");
+    await database.execute(
+      `UPDATE folders SET deleted_at = NULL WHERE id IN (${placeholders}) AND is_default = 0`,
+      descendantIds
+    );
+  }
 }
 
 export async function permanentlyDeleteFolder(id: string): Promise<void> {
@@ -365,6 +397,34 @@ export async function getTrashedFolders(): Promise<Folder[]> {
   return await database.select<Folder[]>(
     "SELECT * FROM folders WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC"
   );
+}
+
+// Collects all descendant folder IDs recursively.
+// Set includeSoftDeleted to true when restoring (to find all children),
+// false when soft-deleting (to only find active children).
+async function collectDescendantFolderIds(
+  parentId: string,
+  includeSoftDeleted = false
+): Promise<string[]> {
+  const database = await getDb();
+  const whereClause = includeSoftDeleted
+    ? "parent_id = $1"
+    : "parent_id = $1 AND deleted_at IS NULL";
+  const children = await database.select<{ id: string }[]>(
+    `SELECT id FROM folders WHERE ${whereClause}`,
+    [parentId]
+  );
+  const result: string[] = [];
+  for (const child of children) {
+    result.push(child.id);
+    const grandKids = await collectDescendantFolderIds(child.id, includeSoftDeleted);
+    result.push(...grandKids);
+  }
+  return result;
+}
+
+async function collectDescendantFolderIdsForRestore(parentId: string): Promise<string[]> {
+  return collectDescendantFolderIds(parentId, true);
 }
 
 export async function emptyTrash(): Promise<void> {
@@ -457,6 +517,32 @@ export async function reorderFolders(orderedIds: string[]): Promise<void> {
     await database.execute("ROLLBACK");
     throw e;
   }
+}
+
+export async function moveFolderToParent(
+  folderId: string,
+  newParentId: string | null
+): Promise<void> {
+  const database = await getDb();
+  // Get max position at target level
+  let position: number;
+  if (newParentId) {
+    const rows = await database.select<{ m: number | null }[]>(
+      "SELECT MAX(position) as m FROM folders WHERE parent_id = $1 AND deleted_at IS NULL AND id != $2",
+      [newParentId, folderId]
+    );
+    position = (rows[0]?.m ?? -1) + 1;
+  } else {
+    const rows = await database.select<{ m: number | null }[]>(
+      "SELECT MAX(position) as m FROM folders WHERE parent_id IS NULL AND deleted_at IS NULL AND id != $1",
+      [folderId]
+    );
+    position = (rows[0]?.m ?? -1) + 1;
+  }
+  await database.execute(
+    "UPDATE folders SET parent_id = $1, position = $2, updated_at = datetime('now') WHERE id = $3",
+    [newParentId, position, folderId]
+  );
 }
 
 export async function moveNoteToFolder(noteId: string, folderId: string | null): Promise<void> {

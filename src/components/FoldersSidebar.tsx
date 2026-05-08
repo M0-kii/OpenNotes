@@ -3,16 +3,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Check,
   ChevronLeft,
+  ChevronRight,
   Folder,
   FolderPlus,
   Folders,
   GripVertical,
   Pencil,
+  Plus,
   Settings,
   Trash2,
   X,
 } from "lucide-react";
-import type { Folder as FolderType } from "../types";
+import type { Folder as FolderType, FolderNode } from "../types";
 import GenericContextMenu from "./ui/GenericContextMenu";
 import {
   DndContext,
@@ -31,6 +33,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 interface FoldersSidebarProps {
+  folderTree: FolderNode[];
   folders: FolderType[];
   selectedFolderId: string | null;
   defaultFolderId: string | null;
@@ -38,10 +41,11 @@ interface FoldersSidebarProps {
   totalNoteCount: number;
   showFolderCounts: boolean;
   onSelectFolder: (id: string | null) => void;
-  onCreateFolder: (name: string) => void;
+  onCreateFolder: (name: string, parentId?: string | null) => void;
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolderRequest: (id: string) => void;
   onReorderFolders: (orderedIds: string[]) => void;
+  onMoveFolderToParent: (folderId: string, newParentId: string | null) => void;
   onOpenSettings: () => void;
   onShowTrash: () => void;
 }
@@ -49,6 +53,7 @@ interface FoldersSidebarProps {
 const NEW_FOLDER_ID = "__new__";
 
 export default function FoldersSidebar({
+  folderTree,
   folders,
   selectedFolderId,
   defaultFolderId,
@@ -60,6 +65,7 @@ export default function FoldersSidebar({
   onRenameFolder,
   onDeleteFolderRequest,
   onReorderFolders,
+  onMoveFolderToParent,
   onOpenSettings,
   onShowTrash,
 }: FoldersSidebarProps) {
@@ -71,22 +77,63 @@ export default function FoldersSidebar({
   const [hoveredAllNotes, setHoveredAllNotes] = useState(false);
   const [hoveredNewFolder, setHoveredNewFolder] = useState(false);
   const [hoveredSettings, setHoveredSettings] = useState(false);
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(
+    new Set()
+  );
+  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(
+    null
+  );
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
+  // Build a map of parentId -> sibling IDs for reorder lookups
+  const parentSiblingMap = new Map<string | null, string[]>();
+  for (const f of folders) {
+    const key = f.parent_id;
+    if (!parentSiblingMap.has(key)) {
+      parentSiblingMap.set(key, []);
+    }
+    parentSiblingMap.get(key)!.push(f.id);
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = folders.findIndex((f) => f.id === active.id);
-    const newIndex = folders.findIndex((f) => f.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-    const reordered = [...folders];
-    const [moved] = reordered.splice(oldIndex, 1);
-    reordered.splice(newIndex, 0, moved);
-    onReorderFolders(reordered.map((f) => f.id));
+
+    const overData = over.data.current as
+      | { type?: string; folderId?: string; parentId?: string | null }
+      | undefined;
+    const activeData = active.data.current as
+      | { type?: string; parentId?: string | null }
+      | undefined;
+
+    // Drop onto a folder → make it a child
+    if (overData?.type === "folder-drop") {
+      onMoveFolderToParent(active.id as string, overData.folderId!);
+      return;
+    }
+
+    // Same level reorder
+    if (
+      activeData?.type === "folder" &&
+      activeData?.parentId === overData?.parentId
+    ) {
+      const siblingKey =
+        activeData.parentId === undefined
+          ? null
+          : (activeData.parentId ?? null);
+      const siblings = parentSiblingMap.get(siblingKey) ?? [];
+      const oldIndex = siblings.findIndex((id) => id === active.id);
+      const newIndex = siblings.findIndex((id) => id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const reordered = [...siblings];
+      const [moved] = reordered.splice(oldIndex, 1);
+      reordered.splice(newIndex, 0, moved);
+      onReorderFolders(reordered);
+    }
   };
 
   useEffect(() => {
@@ -105,9 +152,10 @@ export default function FoldersSidebar({
     setIsRenamingCollapsed(false);
   };
 
-  const startNewFolder = () => {
+  const startNewFolder = (parentId?: string | null) => {
     setRenamingId(NEW_FOLDER_ID);
     setRenameValue("");
+    setNewFolderParentId(parentId ?? null);
     if (collapsed) {
       setIsRenamingCollapsed(true);
     } else {
@@ -123,20 +171,34 @@ export default function FoldersSidebar({
       return;
     }
     if (renamingId === NEW_FOLDER_ID) {
-      onCreateFolder(value);
+      onCreateFolder(value, newFolderParentId);
     } else if (renamingId) {
       onRenameFolder(renamingId, value);
     }
     setRenamingId(null);
     setRenameValue("");
+    setNewFolderParentId(null);
     setIsRenamingCollapsed(false);
   };
 
   const cancelRename = () => {
     setRenamingId(null);
     setRenameValue("");
+    setNewFolderParentId(null);
     setIsRenamingCollapsed(false);
   };
+
+  const toggleCollapseFolder = useCallback((folderId: string) => {
+    setCollapsedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
+      return next;
+    });
+  }, []);
 
   const renameForm = (
     <motion.div
@@ -199,6 +261,85 @@ export default function FoldersSidebar({
 
   const isAllNotesSelected = selectedFolderId === null;
 
+  // Recursive tree rendering function
+  const renderFolderTree = useCallback(
+    (nodes: FolderNode[], depth: number): React.ReactNode => {
+      const siblingIds = nodes.map((n) => n.id);
+
+      return (
+        <div>
+          <SortableContext
+            items={siblingIds}
+            strategy={verticalListSortingStrategy}
+          >
+            {nodes.map((node) => {
+              const hasChildren = node.children.length > 0;
+              const isCollapsed = collapsedFolders.has(node.id);
+
+              return (
+                <div key={node.id}>
+                  <div style={{ paddingLeft: depth * 14 }}>
+                    <SortableFolderItem
+                      folder={node}
+                      depth={depth}
+                      hasChildren={hasChildren}
+                      isCollapsed={isCollapsed}
+                      isSelected={node.id === selectedFolderId}
+                      isRenaming={
+                        node.id === renamingId && !isRenamingCollapsed
+                      }
+                      isDefault={node.id === defaultFolderId}
+                      isHovered={hoveredFolderId === node.id}
+                      collapsed={collapsed}
+                      showFolderCounts={showFolderCounts}
+                      noteCounts={noteCounts}
+                      renameValue={renameValue}
+                      renameInputRef={
+                        node.id === renamingId ? renameInputRef : undefined
+                      }
+                      onSelectFolder={onSelectFolder}
+                      onStartRename={startRename}
+                      onDeleteFolderRequest={onDeleteFolderRequest}
+                      onRenameValueChange={setRenameValue}
+                      onConfirmRename={confirmRename}
+                      onCancelRename={cancelRename}
+                      onToggleCollapse={() => toggleCollapseFolder(node.id)}
+                      onNewSubfolder={(parentFolder) =>
+                        startNewFolder(parentFolder.id)
+                      }
+                      onMouseEnter={() => setHoveredFolderId(node.id)}
+                      onMouseLeave={() => setHoveredFolderId(null)}
+                    />
+                  </div>
+                  {!isCollapsed &&
+                    hasChildren &&
+                    renderFolderTree(node.children, depth + 1)}
+                </div>
+              );
+            })}
+          </SortableContext>
+        </div>
+      );
+    },
+    [
+      collapsedFolders,
+      selectedFolderId,
+      renamingId,
+      isRenamingCollapsed,
+      defaultFolderId,
+      hoveredFolderId,
+      collapsed,
+      showFolderCounts,
+      noteCounts,
+      renameValue,
+      renameInputRef,
+      onSelectFolder,
+      onDeleteFolderRequest,
+      toggleCollapseFolder,
+      startNewFolder,
+    ]
+  );
+
   return (
     <motion.div
       animate={{ width: collapsed ? 48 : 200 }}
@@ -253,180 +394,231 @@ export default function FoldersSidebar({
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <GenericContextMenu
           items={[
-            { label: "New folder", icon: FolderPlus, onClick: startNewFolder },
+            { label: "New folder", icon: FolderPlus, onClick: () => startNewFolder(null) },
           ]}
         >
           {/* All Notes */}
           <div className="px-1.5 pt-1 pb-2">
-          <motion.button
-            type="button"
-            onClick={() => onSelectFolder(null)}
-            onMouseEnter={() => setHoveredAllNotes(true)}
-            onMouseLeave={() => setHoveredAllNotes(false)}
-            className={`group w-full flex items-center gap-2 px-2.5 py-1.5 rounded-note text-left
-                        transition-colors duration-200
-                        ${collapsed ? "justify-center px-0" : ""}
-                        ${
-                          isAllNotesSelected
-                            ? "bg-black/[0.05] dark:bg-white/[0.06]"
-                            : "hover:bg-black/[0.025] dark:hover:bg-white/[0.025]"
-                        }`}
-            title={collapsed ? "All Notes" : undefined}
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <motion.div
-              animate={{
-                ...(isAllNotesSelected && !hoveredAllNotes
-                  ? {
-                      scale: [1, 1.2, 1],
-                      rotate: [0, -10, 0],
-                    }
-                  : {}),
-                ...(hoveredAllNotes
-                  ? {
-                      scale: 1.2,
-                      rotate: -15,
-                    }
-                  : {
-                      scale: 1,
-                      rotate: 0,
-                    }),
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 400,
-                damping: 15,
-              }}
+            <motion.button
+              type="button"
+              onClick={() => onSelectFolder(null)}
+              onMouseEnter={() => setHoveredAllNotes(true)}
+              onMouseLeave={() => setHoveredAllNotes(false)}
+              className={`group w-full flex items-center gap-2 px-2.5 py-1.5 rounded-note text-left
+                         transition-colors duration-200
+                         ${collapsed ? "justify-center px-0" : ""}
+                         ${
+                           isAllNotesSelected
+                             ? "bg-black/[0.05] dark:bg-white/[0.06]"
+                             : "hover:bg-black/[0.025] dark:hover:bg-white/[0.025]"
+                         }`}
+              title={collapsed ? "All Notes" : undefined}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
             >
-              <Folders
-                className={`w-[14px] h-[14px] shrink-0 ${
-                  isAllNotesSelected
-                    ? "text-accent"
-                    : "text-sidebar-textSecondary"
-                }`}
-                strokeWidth={1.5}
-              />
-            </motion.div>
-            <AnimatePresence mode="wait">
-              {!collapsed && (
-                <motion.span
-                  key="all-notes-text"
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -8 }}
-                  transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                  className="flex-1 text-[12px] font-medium text-sidebar-text tracking-[-0.01em] whitespace-nowrap"
-                >
-                  All Notes
-                </motion.span>
-              )}
-            </AnimatePresence>
-            {!collapsed && showFolderCounts && totalNoteCount > 0 && (
-              <span className="text-[11px] tabular-nums text-sidebar-textSecondary/55 tracking-[-0.005em]">
-                {totalNoteCount}
-              </span>
-            )}
-          </motion.button>
-        </div>
-
-        {/* Divider between All Notes and Folders */}
-        <motion.div
-          className="px-3 py-1"
-          layout
-          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-        >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={collapsed ? "divider-collapsed" : "divider-expanded"}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="relative"
-            >
-              {collapsed ? (
-                <div className="border-t border-sidebar-textSecondary/20" />
-              ) : (
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 border-t border-sidebar-textSecondary/15" />
-                  <span className="text-[10px] uppercase tracking-[0.06em] text-sidebar-textSecondary/40 font-medium whitespace-nowrap">
-                    Folders
-                  </span>
-                  <div className="flex-1 border-t border-sidebar-textSecondary/15" />
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Folder list */}
-        <div className="px-1.5 pb-2 space-y-px">
-          <AnimatePresence initial={false}>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={folders.map((f) => f.id)}
-                strategy={verticalListSortingStrategy}
+              <motion.div
+                animate={{
+                  ...(isAllNotesSelected && !hoveredAllNotes
+                    ? {
+                        scale: [1, 1.2, 1],
+                        rotate: [0, -10, 0],
+                      }
+                    : {}),
+                  ...(hoveredAllNotes
+                    ? {
+                        scale: 1.2,
+                        rotate: -15,
+                      }
+                    : {
+                        scale: 1,
+                        rotate: 0,
+                      }),
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 15,
+                }}
               >
-                {folders.map((folder) => (
-                  <SortableFolderItem
-                    key={folder.id}
-                    folder={folder}
-                    isSelected={folder.id === selectedFolderId}
-                    isRenaming={
-                      folder.id === renamingId && !isRenamingCollapsed
-                    }
-                    isDefault={folder.id === defaultFolderId}
-                    isHovered={hoveredFolderId === folder.id}
-                    collapsed={collapsed}
-                    showFolderCounts={showFolderCounts}
-                    noteCounts={noteCounts}
-                    renameValue={renameValue}
-                    renameInputRef={
-                      folder.id === renamingId ? renameInputRef : undefined
-                    }
-                    onSelectFolder={onSelectFolder}
-                    onStartRename={startRename}
-                    onDeleteFolderRequest={onDeleteFolderRequest}
-                    onRenameValueChange={setRenameValue}
-                    onConfirmRename={confirmRename}
-                    onCancelRename={cancelRename}
-                    onMouseEnter={() => setHoveredFolderId(folder.id)}
-                    onMouseLeave={() => setHoveredFolderId(null)}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-          </AnimatePresence>
+                <Folders
+                  className={`w-[14px] h-[14px] shrink-0 ${
+                    isAllNotesSelected
+                      ? "text-accent"
+                      : "text-sidebar-textSecondary"
+                  }`}
+                  strokeWidth={1.5}
+                />
+              </motion.div>
+              <AnimatePresence mode="wait">
+                {!collapsed && (
+                  <motion.span
+                    key="all-notes-text"
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -8 }}
+                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                    className="flex-1 text-[12px] font-medium text-sidebar-text tracking-[-0.01em] whitespace-nowrap"
+                  >
+                    All Notes
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              {!collapsed && showFolderCounts && totalNoteCount > 0 && (
+                <span className="text-[11px] tabular-nums text-sidebar-textSecondary/55 tracking-[-0.005em]">
+                  {totalNoteCount}
+                </span>
+              )}
+            </motion.button>
+          </div>
 
-          {/* New folder inline form - collapsed version */}
-          {renamingId === NEW_FOLDER_ID && isRenamingCollapsed && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.15 }}
-              className="px-1.5 py-1"
-            >
-              <div
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-note
+          {/* Divider between All Notes and Folders */}
+          <motion.div
+            className="px-3 py-1"
+            layout
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={collapsed ? "divider-collapsed" : "divider-expanded"}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="relative"
+              >
+                {collapsed ? (
+                  <div className="border-t border-sidebar-textSecondary/20" />
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 border-t border-sidebar-textSecondary/15" />
+                    <span className="text-[10px] uppercase tracking-[0.06em] text-sidebar-textSecondary/40 font-medium whitespace-nowrap">
+                      Folders
+                    </span>
+                    <div className="flex-1 border-t border-sidebar-textSecondary/15" />
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
+
+          {/* Folder tree */}
+          <div className="px-1.5 pb-2 space-y-px">
+            <AnimatePresence initial={false}>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                {renderFolderTree(folderTree, 0)}
+              </DndContext>
+            </AnimatePresence>
+
+            {/* New folder inline form - collapsed version */}
+            {renamingId === NEW_FOLDER_ID && isRenamingCollapsed && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="px-1.5 py-1"
+              >
+                <div
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-note
                              bg-black/[0.02] dark:bg-white/[0.03]"
+                >
+                  <motion.div
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{
+                      scale: 1,
+                      opacity: 1,
+                      rotate: 360,
+                    }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 500,
+                      damping: 20,
+                    }}
+                  >
+                    <Folder
+                      className="w-[14px] h-[14px] text-sidebar-textSecondary shrink-0"
+                      strokeWidth={1.5}
+                    />
+                  </motion.div>
+                  <div className="flex-1 min-w-0">
+                    <input
+                      ref={renameInputRef}
+                      type="text"
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onBlur={confirmRename}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") cancelRename();
+                        if (e.key === "Enter") confirmRename();
+                      }}
+                      placeholder="Name..."
+                      className="w-full bg-transparent text-[12px] font-medium text-sidebar-text
+                                 outline-none border-b border-accent/30 focus:border-accent
+                                 pb-px tracking-[-0.01em] placeholder:text-sidebar-textSecondary/40"
+                      spellCheck={false}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex items-center gap-0.5">
+                    <motion.button
+                      whileHover={{ scale: 1.15 }}
+                      whileTap={{ scale: 0.9 }}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        confirmRename();
+                      }}
+                      className="p-1 rounded-md text-green-500 hover:text-green-600 
+                                 hover:bg-green-50 dark:hover:bg-green-500/10 transition-colors"
+                    >
+                      <Check className="w-3 h-3" />
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.15 }}
+                      whileTap={{ scale: 0.9 }}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        cancelRename();
+                      }}
+                      className="p-1 rounded-md text-sidebar-textSecondary/60 
+                                 hover:text-sidebar-textSecondary
+                                 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </motion.button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* New folder inline form - expanded version */}
+            {renamingId === NEW_FOLDER_ID && !isRenamingCollapsed && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ duration: 0.2 }}
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-note
+                           bg-black/[0.025] dark:bg-white/[0.025]
+                           ${collapsed ? "justify-center px-0" : ""}`}
               >
                 <motion.div
-                  initial={{ scale: 0.5, opacity: 0 }}
+                  initial={{ scale: 0.5, opacity: 0, rotate: -90 }}
                   animate={{
                     scale: 1,
                     opacity: 1,
-                    rotate: 360,
+                    rotate: 0,
                   }}
                   transition={{
                     type: "spring",
                     stiffness: 500,
                     damping: 20,
+                    delay: 0.05,
                   }}
                 >
                   <Folder
@@ -434,92 +626,10 @@ export default function FoldersSidebar({
                     strokeWidth={1.5}
                   />
                 </motion.div>
-                <div className="flex-1 min-w-0">
-                  <input
-                    ref={renameInputRef}
-                    type="text"
-                    value={renameValue}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                    onBlur={confirmRename}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") cancelRename();
-                      if (e.key === "Enter") confirmRename();
-                    }}
-                    placeholder="Name..."
-                    className="w-full bg-transparent text-[12px] font-medium text-sidebar-text
-                               outline-none border-b border-accent/30 focus:border-accent
-                               pb-px tracking-[-0.01em] placeholder:text-sidebar-textSecondary/40"
-                    spellCheck={false}
-                    autoFocus
-                  />
-                </div>
-                <div className="flex items-center gap-0.5">
-                  <motion.button
-                    whileHover={{ scale: 1.15 }}
-                    whileTap={{ scale: 0.9 }}
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      confirmRename();
-                    }}
-                    className="p-1 rounded-md text-green-500 hover:text-green-600 
-                               hover:bg-green-50 dark:hover:bg-green-500/10 transition-colors"
-                  >
-                    <Check className="w-3 h-3" />
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.15 }}
-                    whileTap={{ scale: 0.9 }}
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      cancelRename();
-                    }}
-                    className="p-1 rounded-md text-sidebar-textSecondary/60 
-                               hover:text-sidebar-textSecondary
-                               hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
-                  >
-                    <X className="w-3 h-3" />
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* New folder inline form - expanded version */}
-          {renamingId === NEW_FOLDER_ID && !isRenamingCollapsed && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
-              transition={{ duration: 0.2 }}
-              className={`flex items-center gap-2 px-2.5 py-1.5 rounded-note
-                         bg-black/[0.025] dark:bg-white/[0.025]
-                         ${collapsed ? "justify-center px-0" : ""}`}
-            >
-              <motion.div
-                initial={{ scale: 0.5, opacity: 0, rotate: -90 }}
-                animate={{
-                  scale: 1,
-                  opacity: 1,
-                  rotate: 0,
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 500,
-                  damping: 20,
-                  delay: 0.05,
-                }}
-              >
-                <Folder
-                  className="w-[14px] h-[14px] text-sidebar-textSecondary shrink-0"
-                  strokeWidth={1.5}
-                />
+                {!collapsed && renameForm}
               </motion.div>
-              {!collapsed && renameForm}
-            </motion.div>
-          )}
-        </div>
+            )}
+          </div>
         </GenericContextMenu>
       </div>
 
@@ -531,7 +641,7 @@ export default function FoldersSidebar({
       >
         <motion.button
           type="button"
-          onClick={startNewFolder}
+          onClick={() => startNewFolder(null)}
           disabled={renamingId === NEW_FOLDER_ID}
           onMouseEnter={() => setHoveredNewFolder(true)}
           onMouseLeave={() => setHoveredNewFolder(false)}
@@ -653,6 +763,9 @@ export default function FoldersSidebar({
 
 function SortableFolderItem({
   folder,
+  depth = 0,
+  hasChildren = false,
+  isCollapsed = false,
   isSelected,
   isRenaming,
   isDefault,
@@ -668,10 +781,15 @@ function SortableFolderItem({
   onRenameValueChange,
   onConfirmRename,
   onCancelRename,
+  onToggleCollapse,
+  onNewSubfolder,
   onMouseEnter,
   onMouseLeave,
 }: {
   folder: FolderType;
+  depth?: number;
+  hasChildren?: boolean;
+  isCollapsed?: boolean;
   isSelected: boolean;
   isRenaming: boolean;
   isDefault: boolean;
@@ -687,6 +805,8 @@ function SortableFolderItem({
   onRenameValueChange: (v: string) => void;
   onConfirmRename: (e?: React.FormEvent) => void;
   onCancelRename: () => void;
+  onToggleCollapse: () => void;
+  onNewSubfolder: (folder: FolderType) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
 }) {
@@ -697,12 +817,18 @@ function SortableFolderItem({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: folder.id });
+  } = useSortable({
+    id: folder.id,
+    data: { type: "folder", parentId: folder.parent_id },
+  });
 
   const {
     setNodeRef: setDroppableRef,
     isOver,
-  } = useDroppable({ id: `folder-drop-${folder.id}` });
+  } = useDroppable({
+    id: `folder-drop-${folder.id}`,
+    data: { type: "folder-drop", folderId: folder.id },
+  });
 
   const setNodeRef = useCallback(
     (node: HTMLElement | null) => {
@@ -718,6 +844,8 @@ function SortableFolderItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const noteCount = noteCounts[folder.id] ?? 0;
+
   return (
     <motion.div
       ref={setNodeRef}
@@ -730,9 +858,27 @@ function SortableFolderItem({
         duration: 0.2,
         ease: [0.4, 0, 0.2, 1],
       }}
+      className="relative"
     >
+      {/* Hierarchy line for indented folders */}
+      {depth > 0 && !collapsed && (
+        <div
+          className="absolute left-[2px] top-0 bottom-0 w-px"
+          style={{
+            background:
+              "linear-gradient(to bottom, transparent 0%, var(--color-sidebar-textSecondary, #888) 20%, var(--color-sidebar-textSecondary, #888) 80%, transparent 100%)",
+            opacity: 0.15,
+          }}
+        />
+      )}
+
       <GenericContextMenu
         items={[
+          {
+            label: "New subfolder",
+            icon: Plus,
+            onClick: () => onNewSubfolder(folder),
+          },
           {
             label: "Rename",
             icon: Pencil,
@@ -756,7 +902,7 @@ function SortableFolderItem({
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
           onClick={() => !isRenaming && onSelectFolder(folder.id)}
-          className={`group relative flex items-center gap-2 px-2.5 py-1.5 rounded-note cursor-pointer
+          className={`group relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-note cursor-pointer
                        transition-colors duration-200
                        ${collapsed ? "justify-center px-0" : ""}
                        ${isDragging ? "shadow-lg z-10" : ""}
@@ -764,17 +910,50 @@ function SortableFolderItem({
                        ${
                          isSelected && !isOver
                            ? "bg-black/[0.05] dark:bg-white/[0.06]"
-                           : !isOver ? "hover:bg-black/[0.025] dark:hover:bg-white/[0.025]" : ""
+                           : !isOver
+                             ? "hover:bg-black/[0.025] dark:hover:bg-white/[0.025]"
+                             : ""
                        }`}
           title={collapsed ? folder.name : undefined}
         >
+          {/* Grip handle */}
           <div
             {...attributes}
             {...listeners}
             className="flex items-center cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
           >
-            <GripVertical className="w-3 h-3 text-sidebar-textSecondary/25" strokeWidth={1.5} />
+            <GripVertical
+              className="w-3 h-3 text-sidebar-textSecondary/25"
+              strokeWidth={1.5}
+            />
           </div>
+
+          {/* Collapse/expand chevron */}
+          {!collapsed && (
+            <motion.button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleCollapse();
+              }}
+              className={`p-0.5 rounded hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
+                          transition-colors ${hasChildren ? "" : "invisible"}`}
+              whileHover={{ scale: 1.15 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <motion.div
+                animate={{ rotate: isCollapsed ? 0 : 90 }}
+                transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              >
+                <ChevronRight
+                  className="w-3 h-3 text-sidebar-textSecondary/50"
+                  strokeWidth={1.5}
+                />
+              </motion.div>
+            </motion.button>
+          )}
+
+          {/* Folder icon */}
           <motion.div
             animate={{
               ...(isSelected && !isHovered
@@ -799,6 +978,7 @@ function SortableFolderItem({
               strokeWidth={1.5}
             />
           </motion.div>
+
           {isRenaming ? (
             <motion.div
               initial={{ opacity: 0, y: -4 }}
@@ -878,9 +1058,9 @@ function SortableFolderItem({
               {!collapsed &&
                 showFolderCounts &&
                 !isHovered &&
-                (noteCounts[folder.id] ?? 0) > 0 && (
+                noteCount > 0 && (
                   <span className="text-[11px] tabular-nums text-sidebar-textSecondary/55 tracking-[-0.005em]">
-                    {noteCounts[folder.id]}
+                    {noteCount}
                   </span>
                 )}
               <AnimatePresence>
