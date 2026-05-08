@@ -208,7 +208,7 @@ export async function getNoteById(id: string): Promise<Note | null> {
 export async function createNote(
   id: string,
   folderId?: string | null,
-  noteType: "note" | "mindmap" = "note"
+  noteType: Note["note_type"] = "note"
 ): Promise<Note> {
   const database = await getDb();
   const now = new Date().toISOString();

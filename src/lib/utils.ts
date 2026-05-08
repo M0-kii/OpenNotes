@@ -41,6 +41,23 @@ export function getNotePreview(content: string, noteType: NoteType, maxLength = 
     } catch {
       text = content;
     }
+  } else if (noteType === "todolist") {
+    try {
+      const raw = JSON.parse(content) as { items?: Array<{ text?: string; completed?: boolean }> };
+      const items = Array.isArray(raw?.items) ? raw.items : [];
+      const done = items.filter((i) => i.completed).length;
+      const total = items.length;
+      if (total === 0) return "Empty todo list";
+      text = items
+        .filter((i) => !i.completed)
+        .map((i) => (typeof i.text === "string" ? i.text : ""))
+        .filter(Boolean)
+        .slice(0, 3)
+        .join(" · ") || `${done}/${total} completed`;
+      return `${text}  (${done}/${total})`;
+    } catch {
+      text = content;
+    }
   } else {
     text = content;
   }

@@ -132,7 +132,7 @@ export function coerceSetting<K extends keyof Settings>(
         ? raw
         : fallback) as Settings[K];
     case "mindmapLayout":
-      return (raw === "top-down" || raw === "left-right"
+      return (raw === "top-down" || raw === "left-right" || raw === "radial"
         ? raw
         : fallback) as Settings[K];
     case "mindmapV2Enabled":

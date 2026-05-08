@@ -1,4 +1,4 @@
-export type NoteType = "note" | "mindmap";
+export type NoteType = "note" | "mindmap" | "todolist";
 
 export interface MindmapNode {
   id: string;
@@ -10,6 +10,13 @@ export interface MindmapNode {
 
 export interface MindmapData {
   nodes: MindmapNode[];
+}
+
+export interface TodoItem {
+  id: string;
+  text: string;
+  completed: boolean;
+  createdAt: string;
 }
 
 export interface Note {
