@@ -514,6 +514,7 @@ export default function SettingsDialog({
                                 options={[
                                   { value: "top-down", label: "Top-down" },
                                   { value: "left-right", label: "Left-right" },
+                                  { value: "radial", label: "Radial" },
                                 ]}
                               />
                             </SettingsRow>

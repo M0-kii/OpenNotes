@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Pencil, Check, X, GripVertical, FileText, GitBranch, ChevronLeft } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, GripVertical, FileText, GitBranch, ListTodo, ChevronLeft } from "lucide-react";
 import type { Note } from "../types";
 import SearchBar from "./SearchBar";
 import GenericContextMenu from "./ui/GenericContextMenu";
@@ -31,6 +31,7 @@ interface SidebarProps {
   onSelect: (id: string, openInSplit?: boolean) => void;
   onCreate: () => void;
   onCreateMindmap: () => void;
+  onCreateTodo: () => void;
   onDeleteRequest: (id: string) => void;
   onRename: (id: string, title: string) => void;
   onReorder: (orderedIds: string[]) => void;
@@ -47,6 +48,7 @@ export default function Sidebar({
   onSelect,
   onCreate,
   onCreateMindmap,
+  onCreateTodo,
   onDeleteRequest,
   onRename,
   onReorder,
@@ -185,6 +187,7 @@ export default function Sidebar({
                 onClose={() => setPopupOpen(false)}
                 onNote={onCreate}
                 onMindmap={onCreateMindmap}
+                onTodo={onCreateTodo}
                 buttonRef={plusButtonRef}
               />
             </div>
@@ -216,6 +219,7 @@ export default function Sidebar({
           items={[
             { label: "New note", icon: FileText, onClick: onCreate },
             { label: "New mind map", icon: GitBranch, onClick: onCreateMindmap },
+            { label: "New todo list", icon: ListTodo, onClick: onCreateTodo },
           ]}
         >
           <div className="px-2.5 py-1 space-y-px">

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { invoke } from "@tauri-apps/api/core";
 import { useNotes } from "./hooks/useNotes";
 import { useFolders } from "./hooks/useFolders";
@@ -8,6 +9,7 @@ import Sidebar from "./components/Sidebar";
 import Editor from "./components/Editor";
 import MindmapEditor from "./components/MindmapEditor";
 import MindmapEditorV2 from "./components/MindmapEditorV2";
+import TodoListEditor from "./components/TodoListEditor";
 import TitleBar from "./components/TitleBar";
 import ConfirmDialog from "./components/ConfirmDialog";
 import SettingsApplier from "./components/settings/SettingsApplier";
@@ -256,6 +258,8 @@ export default function App() {
     const details =
       selectedNote?.note_type === "mindmap"
         ? "Editing a mind map"
+        : selectedNote?.note_type === "todolist"
+        ? "Working on a list"
         : "Writing a note";
     const stateText = selectedNote?.title || "Untitled";
 
@@ -278,17 +282,30 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <div className="h-screen w-screen flex flex-col bg-sidebar-bg">
-        <TitleBar style={settings.titlebarStyle} />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-6 h-6 border-2 border-black/[0.08] dark:border-white/[0.08] border-t-black/[0.3] dark:border-t-white/[0.25] rounded-full animate-spin" />
-            <span className="text-[12px] text-sidebar-textSecondary/50 tracking-[-0.01em]">
-              Loading OpenNotes...
-            </span>
+      <AnimatePresence>
+        <motion.div
+          key="loading"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="h-screen w-screen flex flex-col bg-sidebar-bg"
+        >
+          <TitleBar style={settings.titlebarStyle} />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <div
+                className="w-6 h-6 border-2 border-black/[0.08] dark:border-white/[0.08] border-t-black/[0.3] dark:border-t-white/[0.25] rounded-full animate-spin"
+                role="progressbar"
+                aria-label="Loading application"
+              />
+              <span className="text-[12px] text-sidebar-textSecondary/50 tracking-[-0.01em]">
+                Loading OpenNotes...
+              </span>
+            </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </AnimatePresence>
     );
   }
 
@@ -379,6 +396,7 @@ export default function App() {
           onSelect={handleSelectFromSidebar}
           onCreate={() => createNote("note")}
           onCreateMindmap={() => createNote("mindmap")}
+          onCreateTodo={() => createNote("todolist")}
           onDeleteRequest={handleDeleteNoteRequest}
           onRename={renameNote}
           onReorder={reorderNotes}
@@ -405,6 +423,14 @@ export default function App() {
                   onTitleChange={renameNote}
                 />
               )
+            ) : selectedNote?.note_type === "todolist" ? (
+              <TodoListEditor
+                note={selectedNote}
+                onContentChange={saveNoteContent}
+                onTitleChange={renameNote}
+                isActive={activePane === "left" || splitNoteId === null}
+                onFocus={() => setActivePane("left")}
+              />
             ) : (
               <Editor
                 note={selectedNote}
@@ -441,6 +467,15 @@ export default function App() {
                       onTitleChange={handleRightTitleChange}
                     />
                   )
+                ) : rightNote?.note_type === "todolist" ? (
+                  <TodoListEditor
+                    note={rightNote}
+                    onContentChange={handleRightContentChange}
+                    onTitleChange={handleRightTitleChange}
+                    isActive={activePane === "right"}
+                    onFocus={() => setActivePane("right")}
+                    onClose={closeSplit}
+                  />
                 ) : (
                   <Editor
                     note={rightNote}

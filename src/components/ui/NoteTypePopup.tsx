@@ -1,13 +1,14 @@
 import { useRef, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, GitBranch } from "lucide-react";
+import { FileText, GitBranch, ListTodo } from "lucide-react";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   onNote: () => void;
   onMindmap: () => void;
+  onTodo: () => void;
   buttonRef: React.RefObject<HTMLButtonElement | null>;
 }
 
@@ -16,6 +17,7 @@ export default function NoteTypePopup({
   onClose,
   onNote,
   onMindmap,
+  onTodo,
   buttonRef,
 }: Props) {
   const popupRef = useRef<HTMLDivElement>(null);
@@ -90,6 +92,18 @@ export default function NoteTypePopup({
           >
             <GitBranch className="w-3.5 h-3.5 text-sidebar-textSecondary" strokeWidth={1.5} />
             Mind Map
+          </button>
+          <button
+            onClick={() => {
+              onTodo();
+              onClose();
+            }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px]
+                       text-sidebar-text/80 hover:bg-white/[0.06]
+                       transition-colors duration-100 tracking-[-0.01em]"
+          >
+            <ListTodo className="w-3.5 h-3.5 text-sidebar-textSecondary" strokeWidth={1.5} />
+            Todo List
           </button>
         </motion.div>
       )}
