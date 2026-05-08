@@ -43,6 +43,10 @@ export interface Folder {
   updated_at: string;
 }
 
+export interface FolderNode extends Folder {
+  children: FolderNode[];
+}
+
 export type Theme = "light" | "dark" | "system";
 
 export type TitlebarStyle = "macos" | "windows";
