@@ -232,12 +232,20 @@ export async function getAllNotes(folderId?: string | null): Promise<Note[]> {
   const database = await getDb();
   if (folderId) {
     return await database.select<Note[]>(
-      "SELECT * FROM notes WHERE folder_id = $1 AND deleted_at IS NULL ORDER BY position ASC, updated_at DESC",
+      "SELECT * FROM notes WHERE folder_id = $1 AND deleted_at IS NULL ORDER BY is_favorite DESC, position ASC, updated_at DESC",
       [folderId]
     );
   }
   return await database.select<Note[]>(
-    "SELECT * FROM notes WHERE deleted_at IS NULL ORDER BY position ASC, updated_at DESC"
+    "SELECT * FROM notes WHERE deleted_at IS NULL ORDER BY is_favorite DESC, position ASC, updated_at DESC"
+  );
+}
+
+export async function toggleFavorite(id: string): Promise<void> {
+  const database = await getDb();
+  await database.execute(
+    "UPDATE notes SET is_favorite = CASE WHEN is_favorite = 0 THEN 1 ELSE 0 END WHERE id = $1",
+    [id]
   );
 }
 
@@ -464,12 +472,12 @@ export async function searchNotes(
   const searchTerm = `%${query}%`;
   if (folderId) {
     return await database.select<Note[]>(
-      "SELECT * FROM notes WHERE folder_id = $1 AND deleted_at IS NULL AND (title LIKE $2 OR content LIKE $3) ORDER BY position ASC, updated_at DESC",
+      "SELECT * FROM notes WHERE folder_id = $1 AND deleted_at IS NULL AND (title LIKE $2 OR content LIKE $3) ORDER BY is_favorite DESC, position ASC, updated_at DESC",
       [folderId, searchTerm, searchTerm]
     );
   }
   return await database.select<Note[]>(
-    "SELECT * FROM notes WHERE deleted_at IS NULL AND (title LIKE $1 OR content LIKE $2) ORDER BY position ASC, updated_at DESC",
+    "SELECT * FROM notes WHERE deleted_at IS NULL AND (title LIKE $1 OR content LIKE $2) ORDER BY is_favorite DESC, position ASC, updated_at DESC",
     [searchTerm, searchTerm]
   );
 }
