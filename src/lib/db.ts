@@ -78,6 +78,40 @@ export async function initDb(): Promise<void> {
     }
   }
 
+  // Soft delete support — deleted_at marks when a note was trashed (NULL = active).
+  try {
+    await database.execute("ALTER TABLE notes ADD COLUMN deleted_at TEXT");
+  } catch (e) {
+    if (!String(e).toLowerCase().includes("duplicate column")) {
+      throw e;
+    }
+  }
+  try {
+    await database.execute("ALTER TABLE folders ADD COLUMN deleted_at TEXT");
+  } catch (e) {
+    if (!String(e).toLowerCase().includes("duplicate column")) {
+      throw e;
+    }
+  }
+
+  // Favorites / pinned notes.
+  try {
+    await database.execute("ALTER TABLE notes ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0");
+  } catch (e) {
+    if (!String(e).toLowerCase().includes("duplicate column")) {
+      throw e;
+    }
+  }
+
+  // Nested folders.
+  try {
+    await database.execute("ALTER TABLE folders ADD COLUMN parent_id TEXT");
+  } catch (e) {
+    if (!String(e).toLowerCase().includes("duplicate column")) {
+      throw e;
+    }
+  }
+
   await database.execute(
     `CREATE INDEX IF NOT EXISTS idx_notes_updated ON notes(updated_at DESC)`
   );
@@ -120,7 +154,7 @@ export async function getDefaultFolderId(): Promise<string> {
 export async function getAllFolders(): Promise<Folder[]> {
   const database = await getDb();
   return await database.select<Folder[]>(
-    "SELECT * FROM folders ORDER BY position ASC, name COLLATE NOCASE ASC"
+    "SELECT * FROM folders WHERE deleted_at IS NULL ORDER BY position ASC, name COLLATE NOCASE ASC"
   );
 }
 
@@ -141,7 +175,9 @@ export async function createFolder(name: string): Promise<Folder> {
     id,
     name,
     is_default: 0,
+    parent_id: null,
     position,
+    deleted_at: null,
     created_at: now,
     updated_at: now,
   };
@@ -187,19 +223,19 @@ export async function getAllNotes(folderId?: string | null): Promise<Note[]> {
   const database = await getDb();
   if (folderId) {
     return await database.select<Note[]>(
-      "SELECT * FROM notes WHERE folder_id = $1 ORDER BY position ASC, updated_at DESC",
+      "SELECT * FROM notes WHERE folder_id = $1 AND deleted_at IS NULL ORDER BY position ASC, updated_at DESC",
       [folderId]
     );
   }
   return await database.select<Note[]>(
-    "SELECT * FROM notes ORDER BY position ASC, updated_at DESC"
+    "SELECT * FROM notes WHERE deleted_at IS NULL ORDER BY position ASC, updated_at DESC"
   );
 }
 
 export async function getNoteById(id: string): Promise<Note | null> {
   const database = await getDb();
   const rows = await database.select<Note[]>(
-    "SELECT * FROM notes WHERE id = $1",
+    "SELECT * FROM notes WHERE id = $1 AND deleted_at IS NULL",
     [id]
   );
   return rows.length > 0 ? rows[0] : null;
@@ -229,6 +265,8 @@ export async function createNote(
     position: 0,
     note_type: noteType,
     folder_id: targetFolderId,
+    is_favorite: 0,
+    deleted_at: null,
     created_at: now,
     updated_at: now,
   };
@@ -263,12 +301,86 @@ export async function deleteNote(id: string): Promise<void> {
   await database.execute("DELETE FROM notes WHERE id = $1", [id]);
 }
 
+// --- Trash / soft-delete ---
+
+export async function softDeleteNote(id: string): Promise<void> {
+  const database = await getDb();
+  await database.execute(
+    "UPDATE notes SET deleted_at = datetime('now') WHERE id = $1",
+    [id]
+  );
+}
+
+export async function restoreNote(id: string): Promise<void> {
+  const database = await getDb();
+  await database.execute(
+    "UPDATE notes SET deleted_at = NULL WHERE id = $1",
+    [id]
+  );
+}
+
+export async function permanentlyDeleteNote(id: string): Promise<void> {
+  const database = await getDb();
+  await database.execute("DELETE FROM notes WHERE id = $1", [id]);
+}
+
+export async function softDeleteFolder(
+  id: string,
+  defaultFolderId: string
+): Promise<void> {
+  const database = await getDb();
+  // Reassign its active notes to default folder
+  await database.execute(
+    "UPDATE notes SET folder_id = $1 WHERE folder_id = $2 AND deleted_at IS NULL",
+    [defaultFolderId, id]
+  );
+  await database.execute(
+    "UPDATE folders SET deleted_at = datetime('now') WHERE id = $1 AND is_default = 0",
+    [id]
+  );
+}
+
+export async function restoreFolder(id: string): Promise<void> {
+  const database = await getDb();
+  await database.execute(
+    "UPDATE folders SET deleted_at = NULL WHERE id = $1",
+    [id]
+  );
+}
+
+export async function permanentlyDeleteFolder(id: string): Promise<void> {
+  const database = await getDb();
+  await database.execute("DELETE FROM folders WHERE id = $1", [id]);
+}
+
+export async function getTrashedNotes(): Promise<Note[]> {
+  const database = await getDb();
+  return await database.select<Note[]>(
+    "SELECT * FROM notes WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC"
+  );
+}
+
+export async function getTrashedFolders(): Promise<Folder[]> {
+  const database = await getDb();
+  return await database.select<Folder[]>(
+    "SELECT * FROM folders WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC"
+  );
+}
+
+export async function emptyTrash(): Promise<void> {
+  const database = await getDb();
+  await database.execute("DELETE FROM notes WHERE deleted_at IS NOT NULL");
+  await database.execute(
+    "DELETE FROM folders WHERE deleted_at IS NOT NULL AND is_default = 0"
+  );
+}
+
 export async function getNoteCountInFolder(
   folderId: string
 ): Promise<number> {
   const database = await getDb();
   const rows = await database.select<{ c: number }[]>(
-    "SELECT COUNT(*) as c FROM notes WHERE folder_id = $1",
+    "SELECT COUNT(*) as c FROM notes WHERE folder_id = $1 AND deleted_at IS NULL",
     [folderId]
   );
   return rows[0].c;
@@ -277,7 +389,7 @@ export async function getNoteCountInFolder(
 export async function getNoteCountsByFolder(): Promise<Record<string, number>> {
   const database = await getDb();
   const rows = await database.select<{ folder_id: string; c: number }[]>(
-    "SELECT folder_id, COUNT(*) as c FROM notes WHERE folder_id IS NOT NULL GROUP BY folder_id"
+    "SELECT folder_id, COUNT(*) as c FROM notes WHERE folder_id IS NOT NULL AND deleted_at IS NULL GROUP BY folder_id"
   );
   const out: Record<string, number> = {};
   for (const row of rows) out[row.folder_id] = row.c;
@@ -292,12 +404,12 @@ export async function searchNotes(
   const searchTerm = `%${query}%`;
   if (folderId) {
     return await database.select<Note[]>(
-      "SELECT * FROM notes WHERE folder_id = $1 AND (title LIKE $2 OR content LIKE $3) ORDER BY position ASC, updated_at DESC",
+      "SELECT * FROM notes WHERE folder_id = $1 AND deleted_at IS NULL AND (title LIKE $2 OR content LIKE $3) ORDER BY position ASC, updated_at DESC",
       [folderId, searchTerm, searchTerm]
     );
   }
   return await database.select<Note[]>(
-    "SELECT * FROM notes WHERE title LIKE $1 OR content LIKE $2 ORDER BY position ASC, updated_at DESC",
+    "SELECT * FROM notes WHERE deleted_at IS NULL AND (title LIKE $1 OR content LIKE $2) ORDER BY position ASC, updated_at DESC",
     [searchTerm, searchTerm]
   );
 }

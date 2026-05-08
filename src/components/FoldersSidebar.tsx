@@ -43,6 +43,7 @@ interface FoldersSidebarProps {
   onDeleteFolderRequest: (id: string) => void;
   onReorderFolders: (orderedIds: string[]) => void;
   onOpenSettings: () => void;
+  onShowTrash: () => void;
 }
 
 const NEW_FOLDER_ID = "__new__";
@@ -60,6 +61,7 @@ export default function FoldersSidebar({
   onDeleteFolderRequest,
   onReorderFolders,
   onOpenSettings,
+  onShowTrash,
 }: FoldersSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -568,6 +570,37 @@ export default function FoldersSidebar({
                 className="text-[12px] font-medium tracking-[-0.01em]"
               >
                 New Folder
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </motion.button>
+
+        <motion.button
+          type="button"
+          onClick={onShowTrash}
+          className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-note text-left
+                     transition-colors duration-200
+                     text-sidebar-textSecondary
+                     ${collapsed ? "justify-center px-0" : ""}`}
+          title="Trash"
+          whileHover={{
+            scale: 1.02,
+            backgroundColor: "rgba(0,0,0,0.03)",
+          }}
+          whileTap={{ scale: 0.96 }}
+        >
+          <Trash2 className="w-[14px] h-[14px] shrink-0" strokeWidth={1.5} />
+          <AnimatePresence mode="wait">
+            {!collapsed && (
+              <motion.span
+                key="trash-text"
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -6 }}
+                transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                className="text-[12px] font-medium tracking-[-0.01em]"
+              >
+                Trash
               </motion.span>
             )}
           </AnimatePresence>

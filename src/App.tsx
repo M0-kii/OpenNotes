@@ -11,15 +11,15 @@ import MindmapEditor from "./components/MindmapEditor";
 import MindmapEditorV2 from "./components/MindmapEditorV2";
 import TodoListEditor from "./components/TodoListEditor";
 import TitleBar from "./components/TitleBar";
-import ConfirmDialog from "./components/ConfirmDialog";
+import TrashView from "./components/TrashView";
 import SettingsApplier from "./components/settings/SettingsApplier";
 import SettingsDialog from "./components/settings/SettingsDialog";
 import SplitDivider from "./components/SplitDivider";
 import {
-  getNoteCountInFolder,
   getNoteCountsByFolder,
   getNoteById,
   moveNoteToFolder,
+  emptyTrash,
 } from "./lib/db";
 import type { Note } from "./types";
 
@@ -46,22 +46,16 @@ export default function App() {
     selectNote,
     saveNoteContent,
     refreshNotes,
+    trashedNotes,
+    refreshTrashedNotes,
+    restoreNote,
+    permanentlyDeleteNote,
   } = useNotes({
     folderId: folders.selectedFolderId,
     createInFolderId: folders.selectedFolderId ?? settings.defaultFolderId,
   });
 
-  const [pendingDelete, setPendingDelete] = useState<{
-    id: string;
-    name: string;
-    count: number;
-  } | null>(null);
-
-  const [pendingNoteDelete, setPendingNoteDelete] = useState<{
-    id: string;
-    title: string;
-  } | null>(null);
-
+  const [showTrash, setShowTrash] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [noteCounts, setNoteCounts] = useState<Record<string, number>>({});
 
@@ -245,11 +239,9 @@ export default function App() {
 
   const handleDeleteNoteRequest = useCallback(
     (id: string) => {
-      const note = notes.find((n) => n.id === id);
-      if (!note) return;
-      setPendingNoteDelete({ id, title: note.title || "Untitled" });
+      deleteNote(id);
     },
-    [notes],
+    [deleteNote],
   );
 
   // Discord Rich Presence
@@ -349,17 +341,12 @@ export default function App() {
         null);
   const folderName = selectedFolder?.name ?? "All Notes";
 
-  const handleDeleteFolderRequest = async (id: string) => {
-    const folder = folders.folders.find((f) => f.id === id);
-    if (!folder) return;
-    const count = await getNoteCountInFolder(id);
-    setPendingDelete({ id, name: folder.name, count });
-  };
-
-  const defaultFolder = folders.folders.find(
-    (f) => f.id === folders.defaultFolderId,
+  const handleDeleteFolderRequest = useCallback(
+    (id: string) => {
+      folders.deleteFolder(id);
+    },
+    [folders.deleteFolder],
   );
-  const defaultFolderName = defaultFolder?.name ?? "Notes";
 
   return (
     <div
@@ -384,6 +371,7 @@ export default function App() {
           onDeleteFolderRequest={handleDeleteFolderRequest}
           onReorderFolders={folders.reorderFolders}
           onOpenSettings={() => setSettingsOpen(true)}
+          onShowTrash={() => setShowTrash((s) => !s)}
         />
         <Sidebar
           notes={notes}
@@ -492,43 +480,22 @@ export default function App() {
         </div>
       </div>
 
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        onOpenChange={(o) => {
-          if (!o) setPendingDelete(null);
-        }}
-        title={pendingDelete ? `Delete "${pendingDelete.name}"?` : ""}
-        description={
-          pendingDelete
-            ? pendingDelete.count === 0
-              ? "This folder is empty and will be removed."
-              : pendingDelete.count === 1
-                ? `Its 1 note will move to "${defaultFolderName}".`
-                : `Its ${pendingDelete.count} notes will move to "${defaultFolderName}".`
-            : ""
-        }
-        confirmLabel="Delete"
-        destructive
-        onConfirm={() => {
-          if (pendingDelete) folders.deleteFolder(pendingDelete.id);
-          setPendingDelete(null);
-        }}
-      />
-
-      <ConfirmDialog
-        open={pendingNoteDelete !== null}
-        onOpenChange={(o) => {
-          if (!o) setPendingNoteDelete(null);
-        }}
-        title={pendingNoteDelete ? `Delete "${pendingNoteDelete.title}"?` : ""}
-        description="This note will be permanently deleted. This action cannot be undone."
-        confirmLabel="Delete"
-        destructive
-        onConfirm={() => {
-          if (pendingNoteDelete) deleteNote(pendingNoteDelete.id);
-          setPendingNoteDelete(null);
-        }}
-      />
+      {showTrash && (
+        <TrashView
+          trashedNotes={trashedNotes}
+          trashedFolders={folders.trashedFolders}
+          onRestoreNote={restoreNote}
+          onRestoreFolder={folders.restoreFolder}
+          onPermanentlyDeleteNote={permanentlyDeleteNote}
+          onPermanentlyDeleteFolder={folders.permanentlyDeleteFolder}
+          onEmptyTrash={async () => {
+            await emptyTrash();
+            refreshTrashedNotes();
+            folders.refreshTrashedFolders();
+          }}
+          onClose={() => setShowTrash(false)}
+        />
+      )}
 
       <SettingsDialog
         open={settingsOpen}
