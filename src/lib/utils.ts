@@ -26,6 +26,20 @@ export function formatDate(isoString: string): string {
   });
 }
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/^#{1,6}\s+/gm, "") // headings
+    .replace(/\*\*(.+?)\*\*/g, "$1") // bold
+    .replace(/\*(.+?)\*/g, "$1") // italic
+    .replace(/`(.+?)`/g, "$1") // inline code
+    .replace(/~~(.+?)~~/g, "$1") // strikethrough
+    .replace(/^>\s+/gm, "") // blockquote
+    .replace(/^-\s+/gm, "") // unordered list
+    .replace(/^\d+\.\s+/gm, "") // ordered list
+    .replace(/^---$/gm, "") // horizontal rule
+    .trim();
+}
+
 export function getNotePreview(content: string, noteType: NoteType, maxLength = 80): string {
   let text: string;
   if (noteType === "mindmap") {
@@ -59,7 +73,7 @@ export function getNotePreview(content: string, noteType: NoteType, maxLength = 
       text = content;
     }
   } else {
-    text = content;
+    text = stripMarkdown(content);
   }
   text = text.replace(/\s+/g, " ").trim();
   if (text.length <= maxLength) return text || "No content";

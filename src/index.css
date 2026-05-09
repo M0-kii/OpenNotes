@@ -70,6 +70,12 @@
     --border: rgba(0, 0, 0, 0.06);
     --accent: #c29d00;
     --accent-soft: rgba(0, 113, 227, 0.08);
+    --code-bg: rgba(0, 0, 0, 0.03);
+    --code-text: #1d1d1f;
+    --code-border: rgba(0, 0, 0, 0.06);
+    --table-border: rgba(0, 0, 0, 0.08);
+    --quote-border: rgba(0, 0, 0, 0.10);
+    --quote-bg: rgba(0, 0, 0, 0.015);
 }
 
 .dark {
@@ -84,6 +90,12 @@
     --border: rgba(255, 255, 255, 0.06);
     --accent: #fdcf0d;
     --accent-soft: rgba(51, 154, 240, 0.1);
+    --code-bg: rgba(255, 255, 255, 0.04);
+    --code-text: #f5f5f7;
+    --code-border: rgba(255, 255, 255, 0.08);
+    --table-border: rgba(255, 255, 255, 0.10);
+    --quote-border: rgba(255, 255, 255, 0.12);
+    --quote-bg: rgba(255, 255, 255, 0.02);
 }
 
 * {
@@ -239,4 +251,216 @@ body,
   animation-delay: 0s !important;
   transition-duration: 0s !important;
   transition-delay: 0s !important;
+}
+
+/* ── Editor Content Styling ──────────────────────────── */
+
+.editor-content h1 {
+  font-size: 1.75em;
+  font-weight: 700;
+  margin: 0.5em 0 0.25em;
+}
+
+.editor-content h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin: 0.5em 0 0.25em;
+}
+
+.editor-content h3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin: 0.4em 0 0.2em;
+}
+
+.editor-content ul,
+.editor-content ol {
+  padding-left: 1.5em;
+  margin: 0.25em 0;
+}
+
+.editor-content li {
+  margin: 0.125em 0;
+}
+
+.editor-content blockquote {
+  border-left: 3px solid var(--quote-border);
+  background: var(--quote-bg);
+  padding: 0.5em 1em;
+  margin: 0.25em 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.editor-content pre {
+  position: relative;
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: 8px;
+  padding: 1em;
+  margin: 0.5em 0;
+  overflow-x: auto;
+}
+
+.editor-content pre code {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.875em;
+  color: var(--code-text);
+}
+
+.editor-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+}
+
+.editor-content th,
+.editor-content td {
+  border: 1px solid var(--table-border);
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+
+.editor-content th {
+  font-weight: 600;
+  background: var(--code-bg);
+}
+
+.editor-content code {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.875em;
+  background: var(--code-bg);
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+}
+
+.editor-content strong {
+  font-weight: 600;
+}
+
+.editor-content em {
+  font-style: italic;
+}
+
+.editor-content del {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* ── Prism.js Syntax Highlighting Theme ────────────────── */
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: var(--code-text);
+  opacity: 0.4;
+  font-style: italic;
+}
+
+.token.punctuation {
+  color: var(--code-text);
+  opacity: 0.6;
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: #c29d00;
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: #2a7d4f;
+}
+
+.token.operator,
+.token.entity,
+.token.url {
+  color: var(--code-text);
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #2563eb;
+}
+
+.token.function,
+.token.class-name {
+  color: #7c3aed;
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+  color: #dc2626;
+}
+
+.dark .token.property,
+.dark .token.tag,
+.dark .token.boolean,
+.dark .token.number {
+  color: #fbbf24;
+}
+
+.dark .token.selector,
+.dark .token.attr-name,
+.dark .token.string {
+  color: #4ade80;
+}
+
+.dark .token.atrule,
+.dark .token.attr-value,
+.dark .token.keyword {
+  color: #60a5fa;
+}
+
+.dark .token.function,
+.dark .token.class-name {
+  color: #c084fc;
+}
+
+.dark .token.regex,
+.dark .token.important,
+.dark .token.variable {
+  color: #f87171;
+}
+
+/* ── Code Block Language Label ─────────────────────────── */
+
+.editor-content pre[data-language]::before {
+  content: attr(data-language);
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--code-text);
+  opacity: 0.25;
+  pointer-events: none;
+  user-select: none;
+}
+
+.code-lang-label {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--code-text);
+  opacity: 0.25;
+  pointer-events: none;
+  user-select: none;
 }
