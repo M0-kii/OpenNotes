@@ -386,6 +386,20 @@ export default function App() {
     selectedNote?.title,
   ]);
 
+  const selectedFolder =
+    folders.selectedFolderId === null
+      ? null
+      : (folders.folders.find((f) => f.id === folders.selectedFolderId) ??
+        null);
+  const folderName = selectedFolder?.name ?? "All Notes";
+
+  const handleDeleteFolderRequest = useCallback(
+    (id: string) => {
+      folders.deleteFolder(id);
+    },
+    [folders.deleteFolder],
+  );
+
   const isLoading = folders.isLoading || notesLoading || !settingsLoaded;
   const error = folders.error || notesError;
 
@@ -450,20 +464,6 @@ export default function App() {
       </div>
     );
   }
-
-  const selectedFolder =
-    folders.selectedFolderId === null
-      ? null
-      : (folders.folders.find((f) => f.id === folders.selectedFolderId) ??
-        null);
-  const folderName = selectedFolder?.name ?? "All Notes";
-
-  const handleDeleteFolderRequest = useCallback(
-    (id: string) => {
-      folders.deleteFolder(id);
-    },
-    [folders.deleteFolder],
-  );
 
   return (
     <div
@@ -540,7 +540,20 @@ export default function App() {
                 className="flex flex-col min-w-0 overflow-hidden"
                 style={{ flex: `${1 - splitRatio} 1 0` }}
               >
-                <PaneView
+            <TabBar
+              tabs={leftTabInfos}
+              activeIndex={leftPaneTabs.indexOf(selectedId ?? "")}
+              onSelect={switchLeftTab}
+              onClose={closeLeftTab}
+            />
+            <TabBar
+              tabs={rightTabInfos}
+              activeIndex={rightPaneTabs.indexOf(splitNoteId ?? "")}
+              onSelect={switchRightTab}
+              onClose={closeRightTab}
+              onCreate={createNewTab}
+            />
+            <PaneView
                   note={rightNote}
                   onContentChange={handleRightContentChange}
                   onTitleChange={handleRightTitleChange}
