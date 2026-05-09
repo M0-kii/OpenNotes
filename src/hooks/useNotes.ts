@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { Note, NoteType } from "../types";
 import * as db from "../lib/db";
 import { generateId } from "../lib/utils";
+import { parseWikilinks } from "../lib/linkUtils";
 
 interface UseNotesOptions {
   // null = All Notes (no folder filter)
@@ -26,6 +27,7 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
   // skip the stale setNotes call (prevents content disappearing).
   const saveVersionRef = useRef<Map<string, number>>(new Map());
   const initialLoadDone = useRef(false);
+  const [backlinks, setBacklinks] = useState<Note[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -94,6 +96,10 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
     for (const [id, content] of entries) {
       try {
         await db.updateNoteContent(id, content);
+        // Update link graph from any [[wikilinks]] in the content.
+        const links = parseWikilinks(content);
+        const linkTargets = links.map((l) => l.target);
+        await db.setNoteLinks(id, linkTargets);
         // Skip setNotes if a newer saveNoteContent fired during the await
         // (its content is already in the next timer's pendingSavesRef).
         const currentVersion = saveVersionRef.current.get(id) ?? 0;
@@ -204,6 +210,15 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
     }
   }, []);
 
+  const refreshBacklinks = useCallback(async (noteId: string) => {
+    if (!noteId) {
+      setBacklinks([]);
+      return;
+    }
+    const results = await db.getNoteBacklinks(noteId);
+    setBacklinks(results);
+  }, []);
+
   const renameNote = useCallback(async (id: string, title: string) => {
     try {
       await db.updateNoteTitle(id, title);
@@ -291,5 +306,7 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
     restoreNote,
     permanentlyDeleteNote,
     toggleFavorite,
+    backlinks,
+    refreshBacklinks,
   };
 }

@@ -1,4 +1,5 @@
 import type { NoteType } from "../types";
+import { stripWikilinks } from "./linkUtils";
 
 export function generateId(): string {
   const timestamp = Date.now().toString(36);
@@ -27,6 +28,7 @@ export function formatDate(isoString: string): string {
 }
 
 function stripMarkdown(text: string): string {
+  text = stripWikilinks(text);
   return text
     .replace(/^#{1,6}\s+/gm, "") // headings
     .replace(/\*\*(.+?)\*\*/g, "$1") // bold

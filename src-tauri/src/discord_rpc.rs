@@ -5,7 +5,7 @@ use tauri::State;
 /// Discord Application ID for OpenNotes.
 /// Replace with a real Client ID from https://discord.com/developers/applications
 /// before shipping.
-const DISCORD_CLIENT_ID: &str = "1359123456789012480";
+const DISCORD_CLIENT_ID: &str = "1501705324959236167";
 
 pub struct DiscordRpcState {
     pub client: Mutex<Option<DiscordIpcClient>>,

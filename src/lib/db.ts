@@ -119,6 +119,20 @@ export async function initDb(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_notes_folder ON notes(folder_id)`
   );
 
+  // Note link graph — tracks [[wikilinks]] between notes.
+  try {
+    await database.execute(`
+      CREATE TABLE IF NOT EXISTS note_links (
+        source_id TEXT NOT NULL,
+        target_text TEXT NOT NULL,
+        target_id TEXT,
+        PRIMARY KEY (source_id, target_text)
+      )
+    `);
+  } catch {
+    // Table already exists
+  }
+
   // Seed default folder if none exist.
   const folderCount = await database.select<{ c: number }[]>(
     "SELECT COUNT(*) as c FROM folders"
@@ -577,4 +591,75 @@ export async function reorderNotes(orderedIds: string[]): Promise<void> {
     await database.execute("ROLLBACK");
     throw e;
   }
+}
+
+// --- Link graph ([[wikilinks]]) ---
+
+// Resolve a link target: try exact ID match, then exact title match,
+// then case-insensitive LIKE fallback.
+export async function resolveLinkTarget(titleOrId: string): Promise<Note | null> {
+  const database = await getDb();
+
+  // Exact ID match
+  const byId = await database.select<Note[]>(
+    "SELECT * FROM notes WHERE id = $1 AND deleted_at IS NULL",
+    [titleOrId]
+  );
+  if (byId.length > 0) return byId[0];
+
+  // Exact title match
+  const byTitle = await database.select<Note[]>(
+    "SELECT * FROM notes WHERE title = $1 AND deleted_at IS NULL LIMIT 1",
+    [titleOrId]
+  );
+  if (byTitle.length > 0) return byTitle[0];
+
+  // Case-insensitive LIKE fallback
+  const byLike = await database.select<Note[]>(
+    "SELECT * FROM notes WHERE LOWER(title) LIKE LOWER($1) AND deleted_at IS NULL LIMIT 1",
+    [`%${titleOrId}%`]
+  );
+  return byLike.length > 0 ? byLike[0] : null;
+}
+
+// Replace all links for a note (called when note content changes).
+// Each target string is resolved to an ID immediately; unresolvable
+// targets store NULL for target_id and will be re-resolved later.
+export async function setNoteLinks(
+  sourceId: string,
+  targets: string[]
+): Promise<void> {
+  const database = await getDb();
+  await database.execute("DELETE FROM note_links WHERE source_id = $1", [sourceId]);
+  for (const target of targets) {
+    const resolved = await resolveLinkTarget(target);
+    await database.execute(
+      "INSERT OR IGNORE INTO note_links (source_id, target_text, target_id) VALUES ($1, $2, $3)",
+      [sourceId, target, resolved?.id ?? null]
+    );
+  }
+}
+
+// Get all notes that the given note links TO.
+export async function getNoteLinks(noteId: string): Promise<Note[]> {
+  const database = await getDb();
+  return database.select<Note[]>(
+    `SELECT n.* FROM notes n
+     INNER JOIN note_links nl ON nl.target_id = n.id
+     WHERE nl.source_id = $1 AND n.deleted_at IS NULL
+     ORDER BY n.title`,
+    [noteId]
+  );
+}
+
+// Get all notes that LINK TO the given note (backlinks).
+export async function getNoteBacklinks(noteId: string): Promise<Note[]> {
+  const database = await getDb();
+  return database.select<Note[]>(
+    `SELECT n.* FROM notes n
+     INNER JOIN note_links nl ON nl.source_id = n.id
+     WHERE nl.target_id = $1 AND n.deleted_at IS NULL
+     ORDER BY n.title`,
+    [noteId]
+  );
 }

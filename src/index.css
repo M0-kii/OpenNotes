@@ -464,3 +464,22 @@ body,
   pointer-events: none;
   user-select: none;
 }
+
+/* ── Wikilinks ──────────────────────────────────────── */
+
+.editor-content .wiki-link {
+  display: inline;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  padding: 1px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 150ms ease;
+  user-select: all;
+}
+
+.editor-content .wiki-link:hover {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}

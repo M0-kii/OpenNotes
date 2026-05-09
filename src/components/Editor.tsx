@@ -12,6 +12,7 @@ interface EditorProps {
   isActive?: boolean;
   onFocus?: () => void;
   onClose?: () => void;
+  notes?: Note[];
 }
 
 export default function Editor({
@@ -21,6 +22,7 @@ export default function Editor({
   isActive = true,
   onFocus,
   onClose,
+  notes,
 }: EditorProps) {
   const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -163,6 +165,7 @@ export default function Editor({
                     content={note.content}
                     onContentChange={handleContentChange}
                     onFocus={onFocus}
+                    notes={notes}
                   />
                 </div>
               </div>
