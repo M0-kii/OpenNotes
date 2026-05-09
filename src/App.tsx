@@ -6,10 +6,8 @@ import { useFolders } from "./hooks/useFolders";
 import { useSettings } from "./hooks/useSettings";
 import FoldersSidebar from "./components/FoldersSidebar";
 import Sidebar from "./components/Sidebar";
-import Editor from "./components/Editor";
-import MindmapEditor from "./components/MindmapEditor";
-import MindmapEditorV2 from "./components/MindmapEditorV2";
-import TodoListEditor from "./components/TodoListEditor";
+import PaneView from "./components/PaneView";
+import TabBar from "./components/TabBar";
 import TitleBar from "./components/TitleBar";
 import TrashView from "./components/TrashView";
 import SettingsApplier from "./components/settings/SettingsApplier";
@@ -72,6 +70,22 @@ export default function App() {
   });
   const editorPaneRef = useRef<HTMLDivElement>(null);
 
+  // Drag state for snap layout zones
+  const [isDraggingNote, setIsDraggingNote] = useState(false);
+
+  // Tab state — arrays of note IDs per pane
+  const [leftPaneTabs, setLeftPaneTabs] = useState<string[]>([]);
+  const [rightPaneTabs, setRightPaneTabs] = useState<string[]>([]);
+
+  const leftTabInfos = leftPaneTabs.map((id) => {
+    const note = notes.find((n) => n.id === id);
+    return { id, title: note?.title || "Untitled" };
+  });
+  const rightTabInfos = rightPaneTabs.map((id) => {
+    const note = notes.find((n) => n.id === id);
+    return { id, title: note?.title || "Untitled" };
+  });
+
   // Hydrate the right pane note whenever splitNoteId changes.
   useEffect(() => {
     if (!splitNoteId) {
@@ -95,15 +109,118 @@ export default function App() {
     };
   }, [splitNoteId, notes]);
 
+  // Auto-add to left pane tabs when a note is selected (e.g. via createNote)
+  useEffect(() => {
+    if (selectedId && !leftPaneTabs.includes(selectedId)) {
+      setLeftPaneTabs((prev) => [...prev, selectedId]);
+    }
+  }, [selectedId]);
+
+  // Auto-add to right pane tabs when split note is set
+  useEffect(() => {
+    if (splitNoteId && !rightPaneTabs.includes(splitNoteId)) {
+      setRightPaneTabs((prev) => [...prev, splitNoteId]);
+    }
+  }, [splitNoteId]);
+
   const closeSplit = useCallback(() => {
     setSplitNoteId(null);
+    setRightPaneTabs([]);
     setActivePane("left");
   }, []);
 
-  const openInSplit = useCallback((noteId: string) => {
+  const openInRight = useCallback((noteId: string) => {
+    setRightPaneTabs((prev) =>
+      prev.includes(noteId) ? prev : [...prev, noteId],
+    );
     setSplitNoteId(noteId);
     setActivePane("right");
   }, []);
+
+  const openInSplit = useCallback(
+    (noteId: string) => {
+      openInRight(noteId);
+    },
+    [openInRight],
+  );
+
+  const openInLeft = useCallback(
+    (noteId: string) => {
+      setLeftPaneTabs((prev) =>
+        prev.includes(noteId) ? prev : [...prev, noteId],
+      );
+      selectNote(noteId);
+    },
+    [selectNote],
+  );
+
+  const handleDragStart = useCallback(() => setIsDraggingNote(true), []);
+  const handleDragEndDrag = useCallback(() => setIsDraggingNote(false), []);
+
+  const handleDropZone = useCallback(
+    (noteId: string, zone: string) => {
+      if (zone === "tab") {
+        openInLeft(noteId);
+      } else {
+        openInRight(noteId);
+      }
+    },
+    [openInLeft, openInRight],
+  );
+
+  const closeLeftTab = useCallback(
+    (index: number) => {
+      const closedId = leftPaneTabs[index];
+      const newTabs = leftPaneTabs.filter((_, i) => i !== index);
+      setLeftPaneTabs(newTabs);
+      if (selectedId === closedId && newTabs.length > 0) {
+        const newIndex = Math.min(index, newTabs.length - 1);
+        selectNote(newTabs[newIndex]);
+      }
+    },
+    [leftPaneTabs, selectedId, selectNote],
+  );
+
+  const closeRightTab = useCallback(
+    (index: number) => {
+      const closedId = rightPaneTabs[index];
+      const newTabs = rightPaneTabs.filter((_, i) => i !== index);
+      setRightPaneTabs(newTabs);
+      if (splitNoteId === closedId) {
+        if (newTabs.length > 0) {
+          const newIndex = Math.min(index, newTabs.length - 1);
+          setSplitNoteId(newTabs[newIndex]);
+        } else {
+          setSplitNoteId(null);
+          setActivePane("left");
+        }
+      }
+    },
+    [rightPaneTabs, splitNoteId],
+  );
+
+  const switchLeftTab = useCallback(
+    (index: number) => {
+      const noteId = leftPaneTabs[index];
+      if (noteId) selectNote(noteId);
+    },
+    [leftPaneTabs, selectNote],
+  );
+
+  const switchRightTab = useCallback(
+    (index: number) => {
+      const noteId = rightPaneTabs[index];
+      if (noteId) {
+        setSplitNoteId(noteId);
+        setActivePane("right");
+      }
+    },
+    [rightPaneTabs],
+  );
+
+  const createNewTab = useCallback(() => {
+    createNote("note");
+  }, [createNote]);
 
   const handleMoveToFolder = useCallback(
     async (noteId: string, folderId: string) => {
@@ -145,17 +262,16 @@ export default function App() {
   const handleSelectFromSidebar = useCallback(
     (id: string, openInSplitToo?: boolean) => {
       if (openInSplitToo) {
-        setSplitNoteId(id);
-        setActivePane("right");
+        openInRight(id);
         return;
       }
       if (activePane === "right" && splitNoteId !== null) {
-        setSplitNoteId(id);
+        openInRight(id);
       } else {
-        selectNote(id);
+        openInLeft(id);
       }
     },
-    [activePane, splitNoteId, selectNote],
+    [activePane, splitNoteId, openInLeft, openInRight],
   );
 
   const handleResize = useCallback((ratio: number) => {
@@ -393,45 +509,25 @@ export default function App() {
           onReorder={reorderNotes}
           onMoveToFolder={handleMoveToFolder}
           onDropInEditor={openInSplit}
+          onDragStart={handleDragStart}
+          onDragEndDrag={handleDragEndDrag}
+          onDropZone={handleDropZone}
           onToggleFavorite={toggleFavorite}
         />
-        <div ref={editorPaneRef} className="flex-1 flex overflow-hidden" data-editor-drop-zone="true">
+        <div ref={editorPaneRef} className="flex-1 flex overflow-hidden relative" data-editor-drop-zone="true">
           <div
             className="flex flex-col min-w-0 overflow-hidden"
             style={{ flex: `${splitNoteId ? splitRatio : 1} 1 0` }}
           >
-            {selectedNote?.note_type === "mindmap" ? (
-              settings.mindmapV2Enabled ? (
-                <MindmapEditorV2
-                  note={selectedNote}
-                  onContentChange={saveNoteContent}
-                  onTitleChange={renameNote}
-                />
-              ) : (
-                <MindmapEditor
-                  note={selectedNote}
-                  layout={settings.mindmapLayout}
-                  onContentChange={saveNoteContent}
-                  onTitleChange={renameNote}
-                />
-              )
-            ) : selectedNote?.note_type === "todolist" ? (
-              <TodoListEditor
-                note={selectedNote}
-                onContentChange={saveNoteContent}
-                onTitleChange={renameNote}
-                isActive={activePane === "left" || splitNoteId === null}
-                onFocus={() => setActivePane("left")}
-              />
-            ) : (
-              <Editor
-                note={selectedNote}
-                onContentChange={saveNoteContent}
-                onTitleChange={renameNote}
-                isActive={activePane === "left" || splitNoteId === null}
-                onFocus={() => setActivePane("left")}
-              />
-            )}
+            <PaneView
+              note={selectedNote}
+              onContentChange={saveNoteContent}
+              onTitleChange={renameNote}
+              layout={settings.mindmapLayout}
+              mindmapV2Enabled={settings.mindmapV2Enabled}
+              isActive={activePane === "left" || splitNoteId === null}
+              onFocus={() => setActivePane("left")}
+            />
           </div>
           {splitNoteId && (
             <>
@@ -444,40 +540,55 @@ export default function App() {
                 className="flex flex-col min-w-0 overflow-hidden"
                 style={{ flex: `${1 - splitRatio} 1 0` }}
               >
-                {rightNote?.note_type === "mindmap" ? (
-                  settings.mindmapV2Enabled ? (
-                    <MindmapEditorV2
-                      note={rightNote}
-                      onContentChange={handleRightContentChange}
-                      onTitleChange={handleRightTitleChange}
-                    />
-                  ) : (
-                    <MindmapEditor
-                      note={rightNote}
-                      layout={settings.mindmapLayout}
-                      onContentChange={handleRightContentChange}
-                      onTitleChange={handleRightTitleChange}
-                    />
-                  )
-                ) : rightNote?.note_type === "todolist" ? (
-                  <TodoListEditor
-                    note={rightNote}
-                    onContentChange={handleRightContentChange}
-                    onTitleChange={handleRightTitleChange}
-                    isActive={activePane === "right"}
-                    onFocus={() => setActivePane("right")}
-                    onClose={closeSplit}
-                  />
-                ) : (
-                  <Editor
-                    note={rightNote}
-                    onContentChange={handleRightContentChange}
-                    onTitleChange={handleRightTitleChange}
-                    isActive={activePane === "right"}
-                    onFocus={() => setActivePane("right")}
-                    onClose={closeSplit}
-                  />
-                )}
+                <PaneView
+                  note={rightNote}
+                  onContentChange={handleRightContentChange}
+                  onTitleChange={handleRightTitleChange}
+                  layout={settings.mindmapLayout}
+                  mindmapV2Enabled={settings.mindmapV2Enabled}
+                  isActive={activePane === "right"}
+                  onFocus={() => setActivePane("right")}
+                  onClose={closeSplit}
+                />
+              </div>
+            </>
+          )}
+          {isDraggingNote && (
+            <>
+              {/* TOP ZONE — "Open as tab" */}
+              <div
+                data-drop-zone="tab"
+                className="absolute top-0 left-0 right-0 h-[30%] z-50
+                           border-2 border-dashed border-accent/60 rounded-xl m-3
+                           bg-accent/[0.08] flex items-center justify-center">
+                <div className="flex flex-col items-center gap-1.5 text-accent/80">
+                  <span className="text-2xl">⊞</span>
+                  <span className="text-xs font-medium">Open as tab</span>
+                </div>
+              </div>
+
+              {/* LEFT ZONE — "Split left" */}
+              <div
+                data-drop-zone="split-left"
+                className="absolute bottom-0 left-0 top-[30%] w-1/2 z-50
+                           border-2 border-dashed border-accent/60 rounded-xl m-3
+                           bg-accent/[0.08] flex items-center justify-center">
+                <div className="flex flex-col items-center gap-1.5 text-accent/80">
+                  <span className="text-2xl">◧</span>
+                  <span className="text-xs font-medium">Split left</span>
+                </div>
+              </div>
+
+              {/* RIGHT ZONE — "Split right" */}
+              <div
+                data-drop-zone="split-right"
+                className="absolute bottom-0 right-0 top-[30%] w-1/2 z-50
+                           border-2 border-dashed border-accent/60 rounded-xl m-3
+                           bg-accent/[0.08] flex items-center justify-center">
+                <div className="flex flex-col items-center gap-1.5 text-accent/80">
+                  <span className="text-2xl">◨</span>
+                  <span className="text-xs font-medium">Split right</span>
+                </div>
               </div>
             </>
           )}

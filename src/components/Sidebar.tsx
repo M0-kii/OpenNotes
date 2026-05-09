@@ -37,6 +37,9 @@ interface SidebarProps {
   onReorder: (orderedIds: string[]) => void;
   onMoveToFolder?: (noteId: string, folderId: string) => void;
   onDropInEditor?: (noteId: string) => void;
+  onDragStart?: () => void;
+  onDragEndDrag?: () => void;
+  onDropZone?: (noteId: string, zone: string) => void;
   onToggleFavorite: (id: string) => void;
 }
 
@@ -55,6 +58,9 @@ export default function Sidebar({
   onReorder,
   onMoveToFolder,
   onDropInEditor,
+  onDragStart,
+  onDragEndDrag,
+  onDropZone,
   onToggleFavorite,
 }: SidebarProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -101,6 +107,16 @@ export default function Sidebar({
         }
       }
 
+      // Check for snap layout zone drop
+      for (const el of elementsAtPoint) {
+        const zone = (el as HTMLElement).closest?.('[data-drop-zone]')
+                     ?.getAttribute?.('data-drop-zone');
+        if (zone === "tab" || zone === "split-left" || zone === "split-right") {
+          onDropZone?.(String(active.id), zone);
+          return;
+        }
+      }
+
       // Check for editor drop
       const editorEl = document.querySelector('[data-editor-drop-zone]');
       if (editorEl) {
@@ -115,6 +131,7 @@ export default function Sidebar({
         }
       }
     }
+    onDragEndDrag?.();
   };
 
   useEffect(() => {
@@ -237,6 +254,7 @@ export default function Sidebar({
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
+              onDragStart={() => onDragStart?.()}
               onDragEnd={handleDragEnd}
             >
               <SortableContext
