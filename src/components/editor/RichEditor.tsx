@@ -3,9 +3,11 @@ import { htmlToMarkdown, markdownToHtml } from "./markdownUtils";
 import { wrapRange, getActiveFormats, getParentBlock } from "./formattingUtils";
 import type { ActiveFormats } from "./formattingUtils";
 import type { SlashCommand } from "./slashCommands";
+import type { Note } from "../../types";
 import FloatingToolbar from "./FloatingToolbar";
 import TableToolbar, { getParentCell } from "./TableToolbar";
 import SlashMenu from "./SlashMenu";
+import LinkMenu from "./LinkMenu";
 import EditorContextMenu from "../ui/EditorContextMenu";
 import Prism from "prismjs";
 import "prismjs/components/prism-javascript";
@@ -22,6 +24,7 @@ interface RichEditorProps {
   content: string;
   onContentChange: (content: string) => void;
   onFocus?: () => void;
+  notes?: Note[];
 }
 
 // Walk text nodes in a block and apply markdown shortcut patterns.
@@ -151,10 +154,40 @@ function highlightCodeBlocks(container: HTMLElement) {
   });
 }
 
+function highlightWikilinks(container: HTMLElement) {
+  const walker = document.createTreeWalker(
+    container,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode: (node) =>
+        node.textContent?.includes("[[") ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP,
+    }
+  );
+  const textNodes: Text[] = [];
+  while (walker.nextNode()) {
+    textNodes.push(walker.currentNode as Text);
+  }
+  for (const textNode of textNodes) {
+    const html = textNode.textContent!.replace(
+      /\[\[([^\[\]\|]+?)(?:\|([^\[\]]+?))?\]\]/g,
+      (_, target, alias) => {
+        const display = alias || target;
+        return `<span class="wiki-link" data-target="${target}" contenteditable="false">${display}</span>`;
+      }
+    );
+    if (html !== textNode.textContent) {
+      const span = document.createElement("span");
+      span.innerHTML = html;
+      textNode.parentNode?.replaceChild(span, textNode);
+    }
+  }
+}
+
 export default function RichEditor({
   content,
   onContentChange,
   onFocus,
+  notes = [],
 }: RichEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const lastContentRef = useRef<string>("");
@@ -179,6 +212,10 @@ export default function RichEditor({
   const [slashBlock, setSlashBlock] = useState<HTMLElement | null>(null);
   const [slashQuery, setSlashQuery] = useState("");
 
+  // Link menu state
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkQuery, setLinkQuery] = useState("");
+
   const saveContent = useCallback(() => {
     if (!editorRef.current) return;
     const html = editorRef.current.innerHTML;
@@ -198,6 +235,9 @@ export default function RichEditor({
     const html = markdownToHtml(content);
     editorRef.current.innerHTML = html;
     lastContentRef.current = content;
+
+    // Highlight wikilinks in the DOM
+    highlightWikilinks(editorRef.current);
 
     requestAnimationFrame(() => {
       if (editorRef.current) highlightCodeBlocks(editorRef.current);
@@ -273,6 +313,48 @@ export default function RichEditor({
     }
   }, []);
 
+  const getCursorText = useCallback((): { textBefore: string; node: Text; offset: number } | null => {
+    const sel = window.getSelection();
+    if (!sel || !sel.anchorNode || sel.anchorNode.nodeType !== 3) return null;
+    const textNode = sel.anchorNode as Text;
+    const offset = sel.anchorOffset;
+    const textBefore = textNode.textContent?.substring(0, offset) ?? "";
+    return { textBefore, node: textNode, offset };
+  }, []);
+
+  const checkLinkTrigger = useCallback(() => {
+    const cursor = getCursorText();
+    if (!cursor) {
+      setLinkOpen(false);
+      return;
+    }
+
+    // Find the last [[ before cursor that doesn't have ]] after it
+    const lastOpen = cursor.textBefore.lastIndexOf("[[");
+    if (lastOpen === -1) {
+      setLinkOpen(false);
+      return;
+    }
+
+    // Make sure there's no ]] between [[ and cursor (would mean already closed)
+    const closeAfter = cursor.textBefore.indexOf("]]", lastOpen + 2);
+    if (closeAfter !== -1) {
+      setLinkOpen(false);
+      return;
+    }
+
+    // Extract query between [[ and cursor
+    const query = cursor.textBefore.substring(lastOpen + 2);
+    // Don't trigger if query contains newlines or closing brackets
+    if (/[\n\]]/.test(query)) {
+      setLinkOpen(false);
+      return;
+    }
+
+    setLinkQuery(query);
+    setLinkOpen(true);
+  }, [getCursorText]);
+
   const handleInput = useCallback(() => {
     if (!editorRef.current || isUpdatingFromProp.current) return;
     if (isComposingRef.current) return;
@@ -296,7 +378,8 @@ export default function RichEditor({
 
     saveContent();
     checkSlashCommand();
-  }, [saveContent, checkSlashCommand]);
+    checkLinkTrigger();
+  }, [saveContent, checkSlashCommand, checkLinkTrigger]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -345,8 +428,15 @@ export default function RichEditor({
         e.stopPropagation();
         setSlashOpen(false);
       }
+      // Close link menu on Escape
+      if (e.key === "Escape" && linkOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        setLinkOpen(false);
+        setLinkQuery("");
+      }
     },
-    [saveContent, slashOpen]
+    [saveContent, slashOpen, linkOpen]
   );
 
   const handleCompositionStart = useCallback(() => {
@@ -463,6 +553,46 @@ export default function RichEditor({
     setSlashBlock(null);
   }, []);
 
+  const handleLinkSelect = useCallback(
+    (note: Note) => {
+      if (!editorRef.current) return;
+
+      const sel = window.getSelection();
+      if (!sel || !sel.anchorNode) return;
+
+      const cursor = getCursorText();
+      if (!cursor) return;
+
+      // Find the [[ that started this trigger
+      const lastOpen = cursor.textBefore.lastIndexOf("[[");
+      if (lastOpen === -1) return;
+
+      // Replace [[query with [[Title]] (deletes from [[ to cursor, inserts full link)
+      const textNode = cursor.node;
+      const fullText = textNode.textContent ?? "";
+      const beforeLink = fullText.substring(0, lastOpen);
+      const afterCursor = fullText.substring(cursor.offset);
+      const linkText = `[[${note.title}]] `; // trailing space for typing continuation
+
+      textNode.textContent = beforeLink + linkText + afterCursor;
+
+      // Move cursor after the inserted link
+      const newOffset = beforeLink.length + linkText.length;
+      const range = document.createRange();
+      range.setStart(textNode, newOffset);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+
+      // Trigger save
+      saveContent();
+
+      setLinkOpen(false);
+      setLinkQuery("");
+    },
+    [editorRef, getCursorText, saveContent]
+  );
+
   return (
     <>
       <EditorContextMenu editorRef={editorRef}>
@@ -504,6 +634,16 @@ export default function RichEditor({
         query={slashQuery}
         onSelect={handleSlashSelect}
         onClose={handleSlashClose}
+      />
+      <LinkMenu
+        open={linkOpen}
+        query={linkQuery}
+        notes={notes}
+        onSelect={handleLinkSelect}
+        onClose={() => {
+          setLinkOpen(false);
+          setLinkQuery("");
+        }}
       />
       <TableToolbar
         table={activeTable}

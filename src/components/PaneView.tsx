@@ -13,6 +13,7 @@ interface PaneViewProps {
   isActive?: boolean;
   onFocus?: () => void;
   onClose?: () => void;
+  notes?: Note[];
 }
 
 export default function PaneView({
@@ -24,6 +25,7 @@ export default function PaneView({
   isActive,
   onFocus,
   onClose,
+  notes,
 }: PaneViewProps) {
   switch (note?.note_type) {
     case "mindmap":
@@ -61,6 +63,7 @@ export default function PaneView({
           isActive={isActive}
           onFocus={onFocus}
           onClose={onClose}
+          notes={notes}
         />
       );
   }

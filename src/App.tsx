@@ -10,6 +10,7 @@ import PaneView from "./components/PaneView";
 import TabBar from "./components/TabBar";
 import TitleBar from "./components/TitleBar";
 import TrashView from "./components/TrashView";
+import BacklinksPanel from "./components/BacklinksPanel";
 import SettingsApplier from "./components/settings/SettingsApplier";
 import SettingsDialog from "./components/settings/SettingsDialog";
 import SplitDivider from "./components/SplitDivider";
@@ -49,6 +50,8 @@ export default function App() {
     restoreNote,
     permanentlyDeleteNote,
     toggleFavorite,
+    backlinks,
+    refreshBacklinks,
   } = useNotes({
     folderId: folders.selectedFolderId,
     createInFolderId: folders.selectedFolderId ?? settings.defaultFolderId,
@@ -296,6 +299,10 @@ export default function App() {
   const totalNoteCount = Object.values(noteCounts).reduce((a, b) => a + b, 0);
 
   useEffect(() => {
+    refreshBacklinks(selectedId ?? "");
+  }, [selectedId, refreshBacklinks]);
+
+  useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
       if (!mod) return;
@@ -368,8 +375,8 @@ export default function App() {
       selectedNote?.note_type === "mindmap"
         ? "Editing a mind map"
         : selectedNote?.note_type === "todolist"
-        ? "Working on a list"
-        : "Writing a note";
+          ? "Working on a list"
+          : "Writing a note";
     const stateText = selectedNote?.title || "Untitled";
 
     invoke("update_discord_presence", {
@@ -411,21 +418,64 @@ export default function App() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="h-screen w-screen flex flex-col bg-sidebar-bg"
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          className="flex h-screen w-screen flex-col bg-sidebar-bg"
         >
           <TitleBar style={settings.titlebarStyle} />
-          <div className="flex-1 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
-              <div
-                className="w-6 h-6 border-2 border-black/[0.08] dark:border-white/[0.08] border-t-black/[0.3] dark:border-t-white/[0.25] rounded-full animate-spin"
-                role="progressbar"
-                aria-label="Loading application"
-              />
-              <span className="text-[12px] text-sidebar-textSecondary/50 tracking-[-0.01em]">
+
+          <div className="flex flex-1 items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{
+                delay: 0.3,
+                duration: 0.5,
+                ease: [0.16, 1, 0.3, 1],
+              }}
+              className="flex flex-col items-center gap-4"
+            >
+              <div className="relative h-8 w-8">
+                {/* Outer ring */}
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-black/[0.06] dark:border-white/[0.06]"
+                  animate={{ rotate: 360 }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }}
+                />
+
+                {/* Inner spinning arc */}
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-transparent border-t-black/[0.3] dark:border-t-white/[0.25]"
+                  animate={{ rotate: 360 }}
+                  transition={{
+                    duration: 0.8,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }}
+                  role="progressbar"
+                  aria-label="Loading application"
+                />
+
+                {/* Center dot */}
+                <div className="absolute inset-[6px] rounded-full bg-black/[0.04] dark:bg-white/[0.04]" />
+              </div>
+
+              <motion.span
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  delay: 0.5,
+                  duration: 0.4,
+                  ease: "easeOut",
+                }}
+                className="text-[12px] tracking-[-0.01em] text-sidebar-textSecondary/50"
+              >
                 Loading OpenNotes...
-              </span>
-            </div>
+              </motion.span>
+            </motion.div>
           </div>
         </motion.div>
       </AnimatePresence>
@@ -514,7 +564,11 @@ export default function App() {
           onDropZone={handleDropZone}
           onToggleFavorite={toggleFavorite}
         />
-        <div ref={editorPaneRef} className="flex-1 flex overflow-hidden relative" data-editor-drop-zone="true">
+        <div
+          ref={editorPaneRef}
+          className="flex-1 flex overflow-hidden relative"
+          data-editor-drop-zone="true"
+        >
           <div
             className="flex flex-col min-w-0 overflow-hidden"
             style={{ flex: `${splitNoteId ? splitRatio : 1} 1 0` }}
@@ -527,6 +581,11 @@ export default function App() {
               mindmapV2Enabled={settings.mindmapV2Enabled}
               isActive={activePane === "left" || splitNoteId === null}
               onFocus={() => setActivePane("left")}
+              notes={notes}
+            />
+            <BacklinksPanel
+              noteId={selectedId ?? null}
+              onSelectNote={selectNote}
             />
           </div>
           {splitNoteId && (
@@ -540,20 +599,20 @@ export default function App() {
                 className="flex flex-col min-w-0 overflow-hidden"
                 style={{ flex: `${1 - splitRatio} 1 0` }}
               >
-            <TabBar
-              tabs={leftTabInfos}
-              activeIndex={leftPaneTabs.indexOf(selectedId ?? "")}
-              onSelect={switchLeftTab}
-              onClose={closeLeftTab}
-            />
-            <TabBar
-              tabs={rightTabInfos}
-              activeIndex={rightPaneTabs.indexOf(splitNoteId ?? "")}
-              onSelect={switchRightTab}
-              onClose={closeRightTab}
-              onCreate={createNewTab}
-            />
-            <PaneView
+                <TabBar
+                  tabs={leftTabInfos}
+                  activeIndex={leftPaneTabs.indexOf(selectedId ?? "")}
+                  onSelect={switchLeftTab}
+                  onClose={closeLeftTab}
+                />
+                <TabBar
+                  tabs={rightTabInfos}
+                  activeIndex={rightPaneTabs.indexOf(splitNoteId ?? "")}
+                  onSelect={switchRightTab}
+                  onClose={closeRightTab}
+                  onCreate={createNewTab}
+                />
+                <PaneView
                   note={rightNote}
                   onContentChange={handleRightContentChange}
                   onTitleChange={handleRightTitleChange}
@@ -561,7 +620,12 @@ export default function App() {
                   mindmapV2Enabled={settings.mindmapV2Enabled}
                   isActive={activePane === "right"}
                   onFocus={() => setActivePane("right")}
-                  onClose={closeSplit}
+              onClose={closeSplit}
+              notes={notes}
+            />
+                <BacklinksPanel
+                  noteId={splitNoteId ?? null}
+                  onSelectNote={selectNote}
                 />
               </div>
             </>
@@ -573,7 +637,8 @@ export default function App() {
                 data-drop-zone="tab"
                 className="absolute top-0 left-0 right-0 h-[30%] z-50
                            border-2 border-dashed border-accent/60 rounded-xl m-3
-                           bg-accent/[0.08] flex items-center justify-center">
+                           bg-accent/[0.08] flex items-center justify-center"
+              >
                 <div className="flex flex-col items-center gap-1.5 text-accent/80">
                   <span className="text-2xl">⊞</span>
                   <span className="text-xs font-medium">Open as tab</span>
@@ -585,7 +650,8 @@ export default function App() {
                 data-drop-zone="split-left"
                 className="absolute bottom-0 left-0 top-[30%] w-1/2 z-50
                            border-2 border-dashed border-accent/60 rounded-xl m-3
-                           bg-accent/[0.08] flex items-center justify-center">
+                           bg-accent/[0.08] flex items-center justify-center"
+              >
                 <div className="flex flex-col items-center gap-1.5 text-accent/80">
                   <span className="text-2xl">◧</span>
                   <span className="text-xs font-medium">Split left</span>
@@ -597,7 +663,8 @@ export default function App() {
                 data-drop-zone="split-right"
                 className="absolute bottom-0 right-0 top-[30%] w-1/2 z-50
                            border-2 border-dashed border-accent/60 rounded-xl m-3
-                           bg-accent/[0.08] flex items-center justify-center">
+                           bg-accent/[0.08] flex items-center justify-center"
+              >
                 <div className="flex flex-col items-center gap-1.5 text-accent/80">
                   <span className="text-2xl">◨</span>
                   <span className="text-xs font-medium">Split right</span>
