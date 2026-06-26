@@ -1,5 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Sun, Moon, Monitor } from "lucide-react";
+import { Monitor } from "lucide-react";
+import { SunIcon } from "./ui/sun";
+import { MoonIcon } from "./ui/moon";
 import type { Theme } from "../types";
 import { springBouncy, tapScaleSmall, hoverLiftSmall, springSnappy } from "../lib/animations";
 
@@ -15,7 +17,7 @@ const NEXT: Record<Theme, Theme> = {
 };
 
 export default function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
-  const Icon = theme === "dark" ? Sun : theme === "light" ? Moon : Monitor;
+  const Icon = theme === "dark" ? SunIcon : theme === "light" ? MoonIcon : Monitor;
 
   return (
     <motion.button

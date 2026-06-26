@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X } from "lucide-react";
+import { X } from "lucide-react";
+import { SearchIcon } from "./ui/search";
 import InputContextMenu from "./ui/InputContextMenu";
 import { springSnappy, tapScaleSmall, hoverLiftSmall } from "../lib/animations";
 
@@ -14,7 +15,7 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
 
   return (
     <div className="relative mx-3 mb-2.5">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sidebar-textSecondary/45" />
+      <SearchIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-sidebar-textSecondary/45" />
       <InputContextMenu inputRef={inputRef}>
         <input
           ref={inputRef}

@@ -4,10 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { springGentle } from "../../lib/animations";
 import {
   X,
-  Palette,
-  PencilLine,
   Folder as FolderIcon,
-  GitBranch,
   Github,
   SunMoon,
   Monitor,
@@ -21,8 +18,11 @@ import {
   Plus,
   ChevronDown,
   Radio,
-  Keyboard,
 } from "lucide-react";
+import { SparklesIcon } from "../ui/sparkles";
+import { SquarePenIcon } from "../ui/square-pen";
+import { GitBranchIcon } from "../ui/git-branch";
+import { KeyboardIcon } from "../ui/keyboard";
 import type {
   Settings,
   Folder,
@@ -48,16 +48,13 @@ type TabId = "appearance" | "editor" | "folders" | "mindmap" | "keybinds";
 const TABS: {
   id: TabId;
   label: string;
-  icon: React.ComponentType<{
-    className?: string;
-    strokeWidth?: string | number;
-  }>;
+  icon: React.ElementType;
 }[] = [
-  { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "editor", label: "Editor", icon: PencilLine },
+  { id: "appearance", label: "Appearance", icon: SparklesIcon },
+  { id: "editor", label: "Editor", icon: SquarePenIcon },
   { id: "folders", label: "Folders", icon: FolderIcon },
-  { id: "mindmap", label: "Mind Map", icon: GitBranch },
-  { id: "keybinds", label: "Keybinds", icon: Keyboard },
+  { id: "mindmap", label: "Mind Map", icon: GitBranchIcon },
+  { id: "keybinds", label: "Keybinds", icon: KeyboardIcon },
 ];
 
 const rowStagger = {
@@ -158,10 +155,10 @@ export default function SettingsDialog({
                                      }`}
                         >
                           <tab.icon
-                            className={`w-[15px] h-[15px] shrink-0 transition-colors duration-150 ${
+                            className={`shrink-0 transition-colors duration-150 ${
                               isActive ? "text-accent" : ""
                             }`}
-                            strokeWidth={1.5}
+                            size={15}
                           />
                           <span className="text-[12px] font-medium tracking-[-0.01em]">
                             {tab.label}
@@ -508,7 +505,7 @@ export default function SettingsDialog({
                             <SettingsRow
                               label="Default layout"
                               description="Direction child nodes extend from the root. Used by the current editor; the new editor picks layout per-map in its toolbar."
-                              icon={GitBranch}
+                              icon={GitBranchIcon}
                             >
                               <SegmentedControl<MindmapLayout>
                                 ariaLabel="Mind map layout"
