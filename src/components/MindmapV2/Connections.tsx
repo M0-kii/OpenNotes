@@ -7,9 +7,11 @@ interface Props {
   nodes: MindmapNodeV2[];
   positions: Positions;
   hidden: Set<string>;
+  collapsedParents: Set<string>;
   mode: LayoutMode;
   zoom: number;
   pan: { x: number; y: number };
+  onToggleCollapse: (id: string) => void;
 }
 
 function path(
@@ -47,13 +49,31 @@ function path(
   return `M ${px} ${py} Q ${mx} ${my}, ${cx} ${cy}`;
 }
 
+function midpoint(
+  parent: { x: number; y: number },
+  child: { x: number; y: number },
+  mode: LayoutMode,
+  zoom: number,
+): { x: number; y: number } {
+  const isVertical = mode === "tree";
+  const zh = NODE_H * zoom;
+  if (isVertical) {
+    const py = parent.y + zh / 2;
+    const cy = child.y - zh / 2 - 8 * zoom;
+    return { x: (parent.x + child.x) / 2, y: (py + cy) / 2 };
+  }
+  return { x: (parent.x + child.x) / 2, y: (parent.y + child.y) / 2 };
+}
+
 export default function Connections({
   nodes,
   positions,
   hidden,
+  collapsedParents,
   mode,
   zoom,
   pan,
+  onToggleCollapse,
 }: Props) {
   return (
     <svg
@@ -66,21 +86,37 @@ export default function Connections({
         const parentPos = positions.get(node.parentId);
         const childPos = positions.get(node.id);
         if (!parentPos || !childPos) return null;
-        const d = path(
-          { x: parentPos.x * zoom + pan.x, y: parentPos.y * zoom + pan.y },
-          { x: childPos.x * zoom + pan.x, y: childPos.y * zoom + pan.y },
-          mode,
-          zoom,
-        );
+        const pPos = { x: parentPos.x * zoom + pan.x, y: parentPos.y * zoom + pan.y };
+        const cPos = { x: childPos.x * zoom + pan.x, y: childPos.y * zoom + pan.y };
+        const d = path(pPos, cPos, mode, zoom);
+        const isCollapsedParent = collapsedParents.has(node.parentId);
+        const mid = isCollapsedParent ? midpoint(pPos, cPos, mode, zoom) : null;
         return (
-          <path
-            key={`${node.parentId}-${node.id}`}
-            d={d}
-            fill="none"
-            stroke="currentColor"
-            className="text-border"
-            strokeWidth={1.5}
-          />
+          <g key={`${node.parentId}-${node.id}`}>
+            <path
+              d={d}
+              fill="none"
+              stroke="currentColor"
+              className="text-border"
+              strokeWidth={1.5}
+            />
+            {isCollapsedParent && mid && (
+              <g
+                className="pointer-events-auto cursor-pointer"
+                onClick={() => onToggleCollapse(node.parentId!)}
+              >
+                <circle cx={mid.x} cy={mid.y} r={7} className="fill-accent" />
+                <text
+                  x={mid.x}
+                  y={mid.y + 3.5}
+                  textAnchor="middle"
+                  className="fill-white text-[10px] font-bold leading-none"
+                >
+                  +
+                </text>
+              </g>
+            )}
+          </g>
         );
       })}
     </svg>

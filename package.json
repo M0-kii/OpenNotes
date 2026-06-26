@@ -25,6 +25,7 @@
     "@tauri-apps/plugin-notification": "^2.3.3",
     "@tauri-apps/plugin-sql": "^2.2.0",
     "framer-motion": "^12.38.0",
+    "html-to-image": "^1.11.13",
     "lucide-react": "^0.460.0",
     "marked": "^18.0.3",
     "motion": "^12.41.0",
