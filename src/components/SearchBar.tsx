@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X } from "lucide-react";
 import InputContextMenu from "./ui/InputContextMenu";
+import { springSnappy, tapScaleSmall, hoverLiftSmall } from "../lib/animations";
 
 interface SearchBarProps {
   value: string;
@@ -33,12 +34,12 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
       <AnimatePresence>
         {value && (
           <motion.button
-            initial={{ opacity: 0, scale: 0.7 }}
+            initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.7 }}
-            transition={{ duration: 0.12 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            transition={springSnappy}
+            whileHover={hoverLiftSmall}
+            whileTap={tapScaleSmall}
             onClick={() => onChange("")}
             className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5
                        rounded-md hover:bg-black/[0.06] dark:hover:bg-white/[0.06]

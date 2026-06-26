@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { Folder as FolderType, FolderNode } from "../types";
 import GenericContextMenu from "./ui/GenericContextMenu";
+import { springSnappy, hoverLiftSmall, tapScaleSmall, tapScale, staggerContainer, staggerItem } from "../lib/animations";
 import {
   DndContext,
   closestCenter,
@@ -230,8 +231,8 @@ export default function FoldersSidebar({
           />
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
             <motion.button
-              whileHover={{ scale: 1.15 }}
-              whileTap={{ scale: 0.9 }}
+              whileHover={hoverLiftSmall}
+              whileTap={tapScaleSmall}
               type="submit"
               onMouseDown={(e) => e.preventDefault()}
               className="p-1 rounded-md text-green-500 hover:text-green-600 
@@ -241,8 +242,8 @@ export default function FoldersSidebar({
               <Check className="w-3 h-3" />
             </motion.button>
             <motion.button
-              whileHover={{ scale: 1.15 }}
-              whileTap={{ scale: 0.9 }}
+              whileHover={hoverLiftSmall}
+              whileTap={tapScaleSmall}
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={cancelRename}
@@ -267,7 +268,11 @@ export default function FoldersSidebar({
       const siblingIds = nodes.map((n) => n.id);
 
       return (
-        <div>
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+        >
           <SortableContext
             items={siblingIds}
             strategy={verticalListSortingStrategy}
@@ -318,7 +323,7 @@ export default function FoldersSidebar({
               );
             })}
           </SortableContext>
-        </div>
+        </motion.div>
       );
     },
     [
@@ -369,8 +374,8 @@ export default function FoldersSidebar({
           )}
         </AnimatePresence>
         <motion.button
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.92 }}
+          whileHover={hoverLiftSmall}
+          whileTap={tapScaleSmall}
           onClick={() => {
             setCollapsed(!collapsed);
             if (isRenamingCollapsed) {
@@ -414,31 +419,11 @@ export default function FoldersSidebar({
                          }`}
               title={collapsed ? "All Notes" : undefined}
               whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
+              whileTap={tapScale}
             >
               <motion.div
-                animate={{
-                  ...(isAllNotesSelected && !hoveredAllNotes
-                    ? {
-                        scale: [1, 1.2, 1],
-                        rotate: [0, -10, 0],
-                      }
-                    : {}),
-                  ...(hoveredAllNotes
-                    ? {
-                        scale: 1.2,
-                        rotate: -15,
-                      }
-                    : {
-                        scale: 1,
-                        rotate: 0,
-                      }),
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 400,
-                  damping: 15,
-                }}
+                whileHover={hoverLiftSmall}
+                whileTap={tapScaleSmall}
               >
                 <Folders
                   className={`w-[14px] h-[14px] shrink-0 ${
@@ -565,8 +550,8 @@ export default function FoldersSidebar({
                   </div>
                   <div className="flex items-center gap-0.5">
                     <motion.button
-                      whileHover={{ scale: 1.15 }}
-                      whileTap={{ scale: 0.9 }}
+                      whileHover={hoverLiftSmall}
+                      whileTap={tapScaleSmall}
                       type="button"
                       onMouseDown={(e) => {
                         e.preventDefault();
@@ -578,8 +563,8 @@ export default function FoldersSidebar({
                       <Check className="w-3 h-3" />
                     </motion.button>
                     <motion.button
-                      whileHover={{ scale: 1.15 }}
-                      whileTap={{ scale: 0.9 }}
+                      whileHover={hoverLiftSmall}
+                      whileTap={tapScaleSmall}
                       type="button"
                       onMouseDown={(e) => {
                         e.preventDefault();
@@ -655,14 +640,11 @@ export default function FoldersSidebar({
             scale: 1.02,
             backgroundColor: "rgba(0,0,0,0.03)",
           }}
-          whileTap={{ scale: 0.96 }}
+          whileTap={tapScale}
         >
           <motion.div
-            animate={{
-              scale: hoveredNewFolder ? 1.2 : 1,
-              rotate: hoveredNewFolder ? 90 : 0,
-            }}
-            transition={{ type: "spring", stiffness: 400, damping: 15 }}
+            whileHover={hoverLiftSmall}
+            whileTap={tapScaleSmall}
           >
             <FolderPlus
               className="w-[14px] h-[14px] shrink-0"
@@ -697,7 +679,7 @@ export default function FoldersSidebar({
             scale: 1.02,
             backgroundColor: "rgba(0,0,0,0.03)",
           }}
-          whileTap={{ scale: 0.96 }}
+          whileTap={tapScale}
         >
           <Trash2 className="w-[14px] h-[14px] shrink-0" strokeWidth={1.5} />
           <AnimatePresence mode="wait">
@@ -730,14 +712,11 @@ export default function FoldersSidebar({
             scale: 1.02,
             backgroundColor: "rgba(0,0,0,0.03)",
           }}
-          whileTap={{ scale: 0.96 }}
+          whileTap={tapScale}
         >
           <motion.div
-            animate={{
-              scale: hoveredSettings ? 1.2 : 1,
-              rotate: hoveredSettings ? 90 : 0,
-            }}
-            transition={{ type: "spring", stiffness: 400, damping: 15 }}
+            whileHover={hoverLiftSmall}
+            whileTap={tapScaleSmall}
           >
             <Settings className="w-[14px] h-[14px] shrink-0" strokeWidth={1.5} />
           </motion.div>
@@ -851,13 +830,7 @@ function SortableFolderItem({
       ref={setNodeRef}
       style={style}
       data-folder-id={folder.id}
-      initial={{ opacity: 0, x: -16 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -16, height: 0 }}
-      transition={{
-        duration: 0.2,
-        ease: [0.4, 0, 0.2, 1],
-      }}
+      variants={staggerItem}
       className="relative"
     >
       {/* Hierarchy line for indented folders */}
@@ -938,8 +911,8 @@ function SortableFolderItem({
               }}
               className={`p-0.5 rounded hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
                           transition-colors ${hasChildren ? "" : "invisible"}`}
-              whileHover={{ scale: 1.15 }}
-              whileTap={{ scale: 0.9 }}
+              whileHover={hoverLiftSmall}
+              whileTap={tapScaleSmall}
             >
               <motion.div
                 animate={{ rotate: isCollapsed ? 0 : 90 }}
@@ -955,21 +928,8 @@ function SortableFolderItem({
 
           {/* Folder icon */}
           <motion.div
-            animate={{
-              ...(isSelected && !isHovered
-                ? {
-                    scale: [1, 1.15, 1],
-                    rotate: [0, -8, 0],
-                  }
-                : {}),
-              scale: isHovered ? 1.2 : 1,
-              rotate: isHovered ? 10 : 0,
-            }}
-            transition={{
-              type: "spring",
-              stiffness: 400,
-              damping: 15,
-            }}
+            whileHover={hoverLiftSmall}
+            whileTap={tapScaleSmall}
           >
             <Folder
               className={`w-[14px] h-[14px] shrink-0 ${
@@ -1009,8 +969,8 @@ function SortableFolderItem({
                   />
                   <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
                     <motion.button
-                      whileHover={{ scale: 1.15 }}
-                      whileTap={{ scale: 0.9 }}
+                      whileHover={hoverLiftSmall}
+                      whileTap={tapScaleSmall}
                       type="submit"
                       onMouseDown={(e) => e.preventDefault()}
                       className="p-1 rounded-md text-green-500 hover:text-green-600 
@@ -1020,8 +980,8 @@ function SortableFolderItem({
                       <Check className="w-3 h-3" />
                     </motion.button>
                     <motion.button
-                      whileHover={{ scale: 1.15 }}
-                      whileTap={{ scale: 0.9 }}
+                      whileHover={hoverLiftSmall}
+                      whileTap={tapScaleSmall}
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={onCancelRename}
@@ -1072,8 +1032,8 @@ function SortableFolderItem({
                     className="flex items-center gap-0.5"
                   >
                     <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
+                      whileHover={hoverLiftSmall}
+                      whileTap={tapScaleSmall}
                       onClick={(e) => onStartRename(folder, e)}
                       className="p-1 rounded-md hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
                                  text-sidebar-textSecondary/50 hover:text-sidebar-textSecondary
@@ -1084,8 +1044,8 @@ function SortableFolderItem({
                     </motion.button>
                     {!isDefault && (
                       <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
+                        whileHover={hoverLiftSmall}
+                        whileTap={tapScaleSmall}
                         onClick={(e) => {
                           e.stopPropagation();
                           onDeleteFolderRequest(folder.id);

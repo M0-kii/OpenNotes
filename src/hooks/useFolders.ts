@@ -123,9 +123,9 @@ export function useFolders() {
   // Refuses to delete the default folder.
   const deleteFolder = useCallback(
     async (id: string) => {
-      if (!defaultFolderId || id === defaultFolderId) return;
+      if (defaultFolderId && id === defaultFolderId) return;
       try {
-        await db.softDeleteFolder(id, defaultFolderId);
+        await db.softDeleteFolder(id, defaultFolderId ?? id);
       } catch (e) {
         console.error("Failed to delete folder:", e);
         return;

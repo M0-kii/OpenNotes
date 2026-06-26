@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, Pencil, Check, X, GripVertical, FileText, GitBranch, ListTodo, ChevronLeft, Star } from "lucide-react";
 import type { Note } from "../types";
+import { springSnappy, springGentle, tapScaleSmall, hoverLiftSmall, staggerContainer, staggerItem } from "../lib/animations";
 import SearchBar from "./SearchBar";
 import GenericContextMenu from "./ui/GenericContextMenu";
 import InputContextMenu from "./ui/InputContextMenu";
@@ -166,7 +167,7 @@ export default function Sidebar({
     <motion.div
       animate={{ width: collapsed ? 48 : 270 }}
       initial={{ width: 270 }}
-      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+      transition={springGentle}
       className="h-full flex flex-col glass border-r border-border select-none shrink-0 overflow-hidden"
     >
       <div className="flex items-center justify-between px-3 pt-4 pb-3">
@@ -177,7 +178,7 @@ export default function Sidebar({
               initial={{ opacity: 0, width: 0 }}
               animate={{ opacity: 1, width: "auto" }}
               exit={{ opacity: 0, width: 0 }}
-              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              transition={springSnappy}
               className="flex items-center gap-2 overflow-hidden"
             >
               <h1 className="text-[13px] font-semibold text-sidebar-text tracking-[-0.01em] whitespace-nowrap">
@@ -191,8 +192,9 @@ export default function Sidebar({
             <div className="relative">
               <motion.button
                 ref={plusButtonRef}
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.92 }}
+                whileHover={hoverLiftSmall}
+                whileTap={tapScaleSmall}
+                transition={{ type: "spring", stiffness: 500, damping: 25 }}
                 onClick={() => setPopupOpen((o) => !o)}
                 className="p-1.5 rounded-btn text-sidebar-textSecondary
                            hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
@@ -213,8 +215,9 @@ export default function Sidebar({
           </div>
         )}
         <motion.button
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.92 }}
+          whileHover={hoverLiftSmall}
+          whileTap={tapScaleSmall}
+          transition={{ type: "spring", stiffness: 500, damping: 25 }}
           onClick={() => setCollapsed(!collapsed)}
           className="p-1 rounded-btn text-sidebar-textSecondary/50 hover:text-sidebar-textSecondary
                      hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors duration-150
@@ -223,7 +226,7 @@ export default function Sidebar({
         >
           <motion.div
             animate={{ rotate: collapsed ? 180 : 0 }}
-            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            transition={springSnappy}
           >
             <ChevronLeft className="w-[14px] h-[14px]" strokeWidth={1.5} />
           </motion.div>
@@ -261,25 +264,31 @@ export default function Sidebar({
                 items={notes.map((n) => n.id)}
                 strategy={verticalListSortingStrategy}
               >
-                {notes.map((note) => (
-                  <SortableNoteItem
-                    key={note.id}
-                    note={note}
-                    isSelected={note.id === selectedId}
-                    renamingId={renamingId}
-                    renameValue={renameValue}
-                    renameInputRef={
-                      renamingId === note.id ? renameInputRef : undefined
-                    }
-                    onSelect={onSelect}
-                    onStartRename={handleStartRename}
-                    onDeleteRequest={onDeleteRequest}
-                    onRenameValueChange={setRenameValue}
-                    onConfirmRename={handleConfirmRename}
-                    onCancelRename={handleCancelRename}
-                    onToggleFavorite={onToggleFavorite}
-                  />
-                ))}
+                <motion.div
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  {notes.map((note) => (
+                    <SortableNoteItem
+                      key={note.id}
+                      note={note}
+                      isSelected={note.id === selectedId}
+                      renamingId={renamingId}
+                      renameValue={renameValue}
+                      renameInputRef={
+                        renamingId === note.id ? renameInputRef : undefined
+                      }
+                      onSelect={onSelect}
+                      onStartRename={handleStartRename}
+                      onDeleteRequest={onDeleteRequest}
+                      onRenameValueChange={setRenameValue}
+                      onConfirmRename={handleConfirmRename}
+                      onCancelRename={handleCancelRename}
+                      onToggleFavorite={onToggleFavorite}
+                    />
+                  ))}
+                </motion.div>
               </SortableContext>
             </DndContext>
           </AnimatePresence>
@@ -350,10 +359,7 @@ function SortableNoteItem({
     <motion.div
       ref={setNodeRef}
       style={style}
-      initial={{ opacity: 0, x: -12 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -12, height: 0 }}
-      transition={{ duration: 0.18, ease: "easeOut" }}
+      variants={staggerItem}
     >
       <GenericContextMenu
         items={[
@@ -408,8 +414,8 @@ function SortableNoteItem({
                   spellCheck={false}
                 />
                 <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
+                  whileHover={hoverLiftSmall}
+                  whileTap={tapScaleSmall}
                   type="submit"
                   onMouseDown={(e) => e.preventDefault()}
                   className="p-0.5 text-green-500 hover:text-green-600 transition-colors"
@@ -417,8 +423,8 @@ function SortableNoteItem({
                   <Check className="w-3 h-3" />
                 </motion.button>
                 <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
+                  whileHover={hoverLiftSmall}
+                  whileTap={tapScaleSmall}
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={onCancelRename}
@@ -430,8 +436,8 @@ function SortableNoteItem({
             ) : (
               <>
                 <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
+                  whileHover={hoverLiftSmall}
+                  whileTap={tapScaleSmall}
                   onClick={(e) => {
                     e.stopPropagation();
                     onToggleFavorite(note.id);

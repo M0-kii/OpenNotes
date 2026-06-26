@@ -275,7 +275,8 @@ export async function getNoteById(id: string): Promise<Note | null> {
 export async function createNote(
   id: string,
   folderId?: string | null,
-  noteType: Note["note_type"] = "note"
+  noteType: Note["note_type"] = "note",
+  title: string = ""
 ): Promise<Note> {
   const database = await getDb();
   const now = new Date().toISOString();
@@ -287,11 +288,11 @@ export async function createNote(
   );
   await database.execute(
     "INSERT INTO notes (id, title, content, position, note_type, folder_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-    [id, "", "", 0, noteType, targetFolderId, now, now]
+    [id, title, "", 0, noteType, targetFolderId, now, now]
   );
   return {
     id,
-    title: "",
+    title,
     content: "",
     position: 0,
     note_type: noteType,

@@ -140,12 +140,12 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
     [flushSave]
   );
 
-  const createNote = useCallback(async (noteType: NoteType = "note") => {
+  const createNote = useCallback(async (noteType: NoteType = "note", title: string = "") => {
     await flushSave();
     const id = generateId();
     const targetFolderId = folderId ?? createInFolderId ?? null;
     try {
-      const note = await db.createNote(id, targetFolderId, noteType);
+      const note = await db.createNote(id, targetFolderId, noteType, title);
       setNotes((prev) => [note, ...prev]);
       setSelectedId(id);
       setSearchQuery("");

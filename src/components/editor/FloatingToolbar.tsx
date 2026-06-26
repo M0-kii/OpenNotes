@@ -117,7 +117,7 @@ export default function FloatingToolbar({
                             ${
                               isActive
                                 ? "bg-accent/10 text-accent"
-                                : "text-editor-text/60 hover:text-editor-text hover:bg-white/[0.04] dark:hover:bg-white/[0.04]"
+                                : "text-editor-text/60 hover:text-editor-text hover:bg-hover-subtle"
                             }`}
               >
                 <btn.icon className="w-3.5 h-3.5" strokeWidth={1.5} />

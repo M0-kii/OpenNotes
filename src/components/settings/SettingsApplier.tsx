@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { MotionGlobalConfig } from "framer-motion";
 import type { Settings } from "../../types";
 import {
   EDITOR_WIDTH_MAP,
@@ -91,6 +92,7 @@ export default function SettingsApplier({ settings }: Props) {
     } else {
       root.removeAttribute("data-reduced-motion");
     }
+    MotionGlobalConfig.skipAnimations = settings.reducedMotion;
   }, [settings.reducedMotion]);
 
   return null;

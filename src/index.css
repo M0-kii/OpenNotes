@@ -76,6 +76,21 @@
     --table-border: rgba(0, 0, 0, 0.08);
     --quote-border: rgba(0, 0, 0, 0.10);
     --quote-bg: rgba(0, 0, 0, 0.015);
+    /* Interaction tokens */
+    --hover-subtle: rgba(0, 0, 0, 0.04);
+    --hover-light: rgba(0, 0, 0, 0.025);
+    --selected: rgba(0, 0, 0, 0.06);
+    --surface-elevated: rgba(245, 245, 247, 0.95);
+    --text-primary: #1d1d1f;
+    --text-secondary: #86868b;
+    --overlay: rgba(0, 0, 0, 0.2);
+    --destructive: #ff3b30;
+    --destructive-hover: #ff453a;
+    --destructive-active: #ff6961;
+    --confirm: #007aff;
+    --confirm-hover: #0071e9;
+    --confirm-active: #0066d4;
+    --danger-surface: rgba(255, 59, 48, 0.08);
 }
 
 .dark {
@@ -96,6 +111,21 @@
     --table-border: rgba(255, 255, 255, 0.10);
     --quote-border: rgba(255, 255, 255, 0.12);
     --quote-bg: rgba(255, 255, 255, 0.02);
+    /* Interaction tokens */
+    --hover-subtle: rgba(255, 255, 255, 0.06);
+    --hover-light: rgba(255, 255, 255, 0.03);
+    --selected: rgba(255, 255, 255, 0.08);
+    --surface-elevated: rgba(44, 44, 46, 0.55);
+    --text-primary: #f5f5f7;
+    --text-secondary: #98989d;
+    --overlay: rgba(0, 0, 0, 0.4);
+    --destructive: #ff3b30;
+    --destructive-hover: #ff453a;
+    --destructive-active: #ff6961;
+    --confirm: #007aff;
+    --confirm-hover: #0071e9;
+    --confirm-active: #0066d4;
+    --danger-surface: rgba(255, 59, 48, 0.12);
 }
 
 * {
@@ -206,16 +236,32 @@ body,
     @keyframes context-menu-open {
         from {
             opacity: 0;
-            transform: scale(0.95);
+            transform: scale(0.96) translateY(-2px);
         }
         to {
             opacity: 1;
-            transform: scale(1);
+            transform: scale(1) translateY(0);
         }
     }
 
     .animate-context-menu-open {
-        animation: context-menu-open 120ms ease-out;
+        animation: context-menu-open 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes slide-up-fade {
+        from {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
 
     .dark .glass {

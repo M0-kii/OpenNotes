@@ -278,7 +278,7 @@ export default function TodoListEditor({
                 spellCheck={false}
               />
             </InputContextMenu>
-            <div className="flex items-center gap-6 mt-2.5 text-[11px] text-editor-text/20 tracking-[-0.01em]">
+            <div className="flex items-center justify-between gap-6 mt-2.5 text-[11px] text-editor-text/20 tracking-[-0.01em]">
               <span>
                 Created{" "}
                 {new Date(note.created_at).toLocaleDateString("en-US", {
@@ -289,10 +289,45 @@ export default function TodoListEditor({
                   minute: "2-digit",
                 })}
               </span>
-              <span>
-                {items.filter((i) => i.completed).length}/{items.length} completed
-              </span>
+              <div className="flex items-center gap-4">
+                <span>
+                  {items.filter((i) => i.completed).length}/{items.length} completed
+                </span>
+                {items.some((i) => i.completed) && (
+                  <button
+                    onClick={() => {
+                      const remaining = items.filter((i) => !i.completed);
+                      setItems(remaining);
+                      save(remaining);
+                    }}
+                    className="text-editor-text/15 hover:text-editor-text/40 transition-colors"
+                  >
+                    Clear completed
+                  </button>
+                )}
+              </div>
             </div>
+            {items.length > 0 && (
+              <div className="mt-2 h-1 bg-border rounded-full overflow-hidden">
+                <motion.div
+                  className={`h-full rounded-full ${items.every((i) => i.completed) ? "bg-confirm" : "bg-accent"}`}
+                  initial={{ width: 0 }}
+                  animate={{
+                    width: `${(items.filter((i) => i.completed).length / items.length) * 100}%`,
+                  }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                />
+              </div>
+            )}
+            {items.length > 0 && items.every((i) => i.completed) && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-2 text-[11px] text-confirm/70 tracking-[-0.01em]"
+              >
+                All done!
+              </motion.div>
+            )}
           </div>
 
           {/* ── Items list ───────────────────────────────────── */}
@@ -384,6 +419,11 @@ function SortableTodoItem({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        onToggle(item.id);
+        return;
+      }
       if (e.key === "Enter") {
         e.preventDefault();
         const text = (e.target as HTMLDivElement).innerText.trim();
@@ -399,7 +439,7 @@ function SortableTodoItem({
         }
       }
     },
-    [item.id, onAddBelow, onDelete]
+    [item.id, onAddBelow, onDelete, onToggle]
   );
 
   const handleBlur = useCallback(
@@ -435,32 +475,42 @@ function SortableTodoItem({
       </div>
 
       {/* Checkbox */}
-      <button
+      <motion.button
         onClick={() => onToggle(item.id)}
+        whileTap={{ scale: 0.85 }}
         className={`flex-shrink-0 w-4 h-4 rounded-[4px] flex items-center justify-center
-                    transition-all duration-150 cursor-pointer
+                    transition-colors duration-150 cursor-pointer
                     ${
                       item.completed
                         ? "bg-accent border-accent"
                         : "border border-border hover:border-editor-text/20"
                     }`}
       >
-        <AnimatePresence>
-          {item.completed && (
+        <AnimatePresence mode="wait">
+          {item.completed ? (
             <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              transition={{ duration: 0.12, ease: "easeOut" }}
+              key="check"
+              initial={{ scale: 0, rotate: -45 }}
+              animate={{ scale: 1, rotate: 0 }}
+              exit={{ scale: 0, rotate: 45 }}
+              transition={{ type: "spring", stiffness: 500, damping: 25, mass: 0.5 }}
             >
               <Check
                 className="w-2.5 h-2.5 text-white dark:text-black"
                 strokeWidth={3}
               />
             </motion.div>
+          ) : (
+            <motion.div
+              key="empty"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              transition={{ duration: 0.1 }}
+            />
           )}
         </AnimatePresence>
-      </button>
+      </motion.button>
 
       {/* Text */}
       <div

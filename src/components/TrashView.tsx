@@ -4,6 +4,7 @@ import { Trash2, Undo2, X, FileText, Folder } from "lucide-react";
 import type { Note, Folder as FolderType } from "../types";
 import ConfirmDialog from "./ConfirmDialog";
 import { formatDate } from "../lib/utils";
+import { springGentle, tapScaleSmall, tapScale, hoverLift, hoverLiftSmall } from "../lib/animations";
 
 interface TrashViewProps {
   trashedNotes: Note[];
@@ -59,10 +60,10 @@ export default function TrashView({
           onClick={onClose}
         />
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, scale: 0.96, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          transition={{ duration: 0.25, ease: [0.22, 0.61, 0.36, 1] }}
+          exit={{ opacity: 0, scale: 0.96, y: 12 }}
+          transition={springGentle}
           className="fixed inset-0 z-50 flex items-center justify-center"
         >
           <div
@@ -81,8 +82,9 @@ export default function TrashView({
                 </h2>
               </div>
               <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+                whileHover={hoverLift}
+                whileTap={tapScaleSmall}
+                transition={{ type: "spring", stiffness: 500, damping: 25 }}
                 onClick={onClose}
                 className="p-1.5 rounded-btn text-sidebar-textSecondary/60
                            hover:text-sidebar-textSecondary hover:bg-black/[0.04]
@@ -153,7 +155,7 @@ export default function TrashView({
               <div className="px-5 py-3 border-t border-border shrink-0 flex justify-end">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
+                  whileTap={tapScale}
                   onClick={() => setShowEmptyConfirm(true)}
                   className="px-4 py-1.5 rounded-md text-[12px] font-medium
                              text-red-500 hover:text-white
@@ -215,8 +217,8 @@ function TrashItem({
       </div>
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
         <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
+          whileHover={hoverLiftSmall}
+          whileTap={tapScaleSmall}
           onClick={(e) => {
             e.stopPropagation();
             onRestore();
@@ -229,8 +231,8 @@ function TrashItem({
           <Undo2 className="w-3.5 h-3.5" strokeWidth={1.5} />
         </motion.button>
         <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
+          whileHover={hoverLiftSmall}
+          whileTap={tapScaleSmall}
           onClick={(e) => {
             e.stopPropagation();
             onDelete();

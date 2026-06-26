@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Pen } from "lucide-react";
+import { springGentle, springBouncy, easeSmooth } from "./lib/animations";
 import { invoke } from "@tauri-apps/api/core";
 import { useNotes } from "./hooks/useNotes";
 import { useFolders } from "./hooks/useFolders";
@@ -20,7 +22,9 @@ import {
   moveNoteToFolder,
   emptyTrash,
 } from "./lib/db";
-import type { Note } from "./types";
+import QuickSwitcher from "./components/QuickSwitcher";
+import ConfirmDialog from "./components/ConfirmDialog";
+import type { Note, Folder } from "./types";
 
 export default function App() {
   const folders = useFolders();
@@ -66,6 +70,11 @@ export default function App() {
   // sidebar clicks and new-note creation land.
   const [splitNoteId, setSplitNoteId] = useState<string | null>(null);
   const [activePane, setActivePane] = useState<"left" | "right">("left");
+  const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{
+    id: string;
+    type: "note" | "folder";
+  } | null>(null);
   const [rightNote, setRightNote] = useState<Note | null>(null);
   const [splitRatio, setSplitRatio] = useState<number>(() => {
     const raw = parseFloat(localStorage.getItem("opennotes-split-ratio") || "");
@@ -314,6 +323,13 @@ export default function App() {
         return;
       }
 
+      // Quick switcher
+      if (e.key === "k") {
+        e.preventDefault();
+        setQuickSwitcherOpen((o) => !o);
+        return;
+      }
+
       // Split editor shortcuts
       if (e.key === "\\") {
         e.preventDefault();
@@ -363,10 +379,28 @@ export default function App() {
 
   const handleDeleteNoteRequest = useCallback(
     (id: string) => {
-      deleteNote(id);
+      setDeleteConfirmTarget({ id, type: "note" });
     },
-    [deleteNote],
+    [],
   );
+
+  const handleDeleteFolderRequest = useCallback(
+    (id: string) => {
+      setDeleteConfirmTarget({ id, type: "folder" });
+    },
+    [],
+  );
+
+  const handleConfirmDelete = useCallback(() => {
+    const target = deleteConfirmTarget;
+    if (!target) return;
+    if (target.type === "note") {
+      deleteNote(target.id);
+    } else {
+      folders.deleteFolder(target.id);
+    }
+    setDeleteConfirmTarget(null);
+  }, [deleteConfirmTarget, deleteNote, folders.deleteFolder]);
 
   // Discord Rich Presence
   useEffect(() => {
@@ -400,13 +434,6 @@ export default function App() {
         null);
   const folderName = selectedFolder?.name ?? "All Notes";
 
-  const handleDeleteFolderRequest = useCallback(
-    (id: string) => {
-      folders.deleteFolder(id);
-    },
-    [folders.deleteFolder],
-  );
-
   const isLoading = folders.isLoading || notesLoading || !settingsLoaded;
   const error = folders.error || notesError;
 
@@ -424,58 +451,60 @@ export default function App() {
           <TitleBar style={settings.titlebarStyle} />
 
           <div className="flex flex-1 items-center justify-center">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{
-                delay: 0.3,
-                duration: 0.5,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-              className="flex flex-col items-center gap-4"
-            >
-              <div className="relative h-8 w-8">
-                {/* Outer ring */}
-                <motion.div
-                  className="absolute inset-0 rounded-full border-2 border-black/[0.06] dark:border-white/[0.06]"
-                  animate={{ rotate: 360 }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                />
-
-                {/* Inner spinning arc */}
-                <motion.div
-                  className="absolute inset-0 rounded-full border-2 border-transparent border-t-black/[0.3] dark:border-t-white/[0.25]"
-                  animate={{ rotate: 360 }}
-                  transition={{
-                    duration: 0.8,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  role="progressbar"
-                  aria-label="Loading application"
-                />
-
-                {/* Center dot */}
-                <div className="absolute inset-[6px] rounded-full bg-black/[0.04] dark:bg-white/[0.04]" />
-              </div>
-
-              <motion.span
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: 0.5,
-                  duration: 0.4,
-                  ease: "easeOut",
-                }}
-                className="text-[12px] tracking-[-0.01em] text-sidebar-textSecondary/50"
+            <div className="flex flex-col items-center gap-5">
+              {/* Pen icon — spring in, then float gently */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ ...springBouncy, delay: 0.2 }}
               >
-                Loading OpenNotes...
-              </motion.span>
-            </motion.div>
+                <motion.div
+                  animate={{ y: [0, -5, 0] }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: 1.2,
+                  }}
+                >
+                  <Pen
+                    className="h-8 w-8 text-sidebar-textSecondary/40"
+                    strokeWidth={1.5}
+                  />
+                </motion.div>
+              </motion.div>
+
+              {/* "OpenNotes" title — staggered character reveal */}
+              <h1 className="flex text-xl font-semibold tracking-tight text-sidebar-text">
+                {"OpenNotes".split("").map((char, i) => (
+                  <motion.span
+                    key={i}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      delay: 0.35 + i * 0.045,
+                      ...springGentle,
+                    }}
+                  >
+                    {char === " " ? "\u00A0" : char}
+                  </motion.span>
+                ))}
+              </h1>
+
+              {/* "Loading..." — fades in after the title */}
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{
+                  delay: 0.8,
+                  duration: 0.4,
+                  ease: easeSmooth,
+                }}
+                className="text-xs tracking-[0.02em] text-sidebar-textSecondary/40"
+              >
+                Loading...
+              </motion.p>
+            </div>
           </div>
         </motion.div>
       </AnimatePresence>
@@ -699,6 +728,39 @@ export default function App() {
         folders={folders.folders}
         onChange={updateSetting}
       />
+
+      <QuickSwitcher
+        open={quickSwitcherOpen}
+        onClose={() => setQuickSwitcherOpen(false)}
+        notes={notes}
+        folders={folders.folders}
+        onSelect={(id) => selectNote(id)}
+        onCreate={(title) => createNote("note", title)}
+      />
+
+      {deleteConfirmTarget && (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setDeleteConfirmTarget(null);
+          }}
+          title={
+            deleteConfirmTarget.type === "note"
+              ? (notes.find((n) => n.id === deleteConfirmTarget.id)?.title ||
+                  "Untitled")
+              : (folders.folders.find((f) => f.id === deleteConfirmTarget.id)
+                  ?.name ?? "Untitled")
+          }
+          description={
+            deleteConfirmTarget.type === "note"
+              ? "This note will be moved to trash. You can restore it from there."
+              : "This folder and all its notes will be moved to trash."
+          }
+          confirmLabel="Delete"
+          destructive
+          onConfirm={handleConfirmDelete}
+        />
+      )}
     </div>
   );
 }

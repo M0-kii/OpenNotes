@@ -1,6 +1,7 @@
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { motion, AnimatePresence } from "framer-motion";
+import { springGentle } from "../../lib/animations";
 import {
   X,
   Palette,
@@ -20,6 +21,7 @@ import {
   Plus,
   ChevronDown,
   Radio,
+  Keyboard,
 } from "lucide-react";
 import type {
   Settings,
@@ -41,7 +43,7 @@ interface Props {
   onChange: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
 }
 
-type TabId = "appearance" | "editor" | "folders" | "mindmap";
+type TabId = "appearance" | "editor" | "folders" | "mindmap" | "keybinds";
 
 const TABS: {
   id: TabId;
@@ -55,12 +57,13 @@ const TABS: {
   { id: "editor", label: "Editor", icon: PencilLine },
   { id: "folders", label: "Folders", icon: FolderIcon },
   { id: "mindmap", label: "Mind Map", icon: GitBranch },
+  { id: "keybinds", label: "Keybinds", icon: Keyboard },
 ];
 
 const rowStagger = {
   hidden: {},
   visible: {
-    transition: { staggerChildren: 0.04 },
+    transition: { staggerChildren: 0.05 },
   },
 };
 
@@ -69,7 +72,7 @@ const rowItem = {
   visible: {
     opacity: 1,
     x: 0,
-    transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] as const },
+    transition: { type: "spring" as const, stiffness: 400, damping: 28, mass: 0.8 },
   },
 };
 
@@ -102,10 +105,10 @@ export default function SettingsDialog({
                 initial={{ opacity: 0, scale: 0.97, x: "-50%", y: "-50%" }}
                 animate={{ opacity: 1, scale: 1, x: "-50%", y: "-50%" }}
                 exit={{ opacity: 0, scale: 0.97, x: "-50%", y: "-50%" }}
-                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                transition={springGentle}
                 className="fixed top-1/2 left-1/2
                            z-50 w-[calc(100vw-32px)] sm:w-[600px]
-                           max-h-[min(calc(100vh-48px),640px)]
+                           h-[min(calc(100vh-48px),640px)]
                            bg-editor-bg border border-border rounded-[14px]
                            shadow-2xl overflow-hidden flex flex-col"
               >
@@ -169,7 +172,7 @@ export default function SettingsDialog({
                   </div>
 
                   {/* Tab content */}
-                  <div className="flex-1 overflow-y-auto px-5 py-3">
+                  <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 py-3">
                     <AnimatePresence mode="wait">
                       {activeTab === "appearance" && (
                         <motion.div
@@ -519,6 +522,41 @@ export default function SettingsDialog({
                               />
                             </SettingsRow>
                           </motion.div>
+                        </motion.div>
+                      )}
+
+                      {activeTab === "keybinds" && (
+                        <motion.div
+                          key="keybinds"
+                          variants={rowItem}
+                          className="space-y-3 px-5 py-4"
+                        >
+                          <h3 className="text-[12px] font-semibold text-sidebar-text tracking-[-0.01em] mb-3">
+                            Keyboard Shortcuts
+                          </h3>
+                          <div className="space-y-px">
+                            {[
+                              { keys: "⌘K", description: "Quick switcher" },
+                              { keys: "⌘N", description: "New note" },
+                              { keys: "⌘,", description: "Settings" },
+                              { keys: "⌘\\", description: "Split editor" },
+                              { keys: "⌘W", description: "Close split" },
+                              { keys: "⌘1 / ⌘2", description: "Focus left / right pane" },
+                              { keys: "⌘⌫", description: "Delete note" },
+                            ].map((s) => (
+                              <div
+                                key={s.keys}
+                                className="flex items-center justify-between py-1.5 px-3 rounded-note hover:bg-hover-subtle transition-colors duration-150"
+                              >
+                                <span className="text-[12px] text-editor-text tracking-[-0.01em]">
+                                  {s.description}
+                                </span>
+                                <kbd className="px-2 py-0.5 text-[11px] font-mono rounded bg-hover-subtle text-editor-text/50 border border-border">
+                                  {s.keys}
+                                </kbd>
+                              </div>
+                            ))}
+                          </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
