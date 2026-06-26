@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X as CloseIcon } from "lucide-react";
 import InputContextMenu from "./ui/InputContextMenu";
 import RichEditor from "./editor/RichEditor";
+import ReminderPicker from "./ReminderPicker";
 import type { Note } from "../types";
 
 interface EditorProps {
   note: Note | null;
   onContentChange: (id: string, content: string) => void;
   onTitleChange?: (id: string, title: string) => void;
+  onReminderChange?: (id: string, reminderAt: string | null) => void;
   isActive?: boolean;
   onFocus?: () => void;
   onClose?: () => void;
@@ -19,6 +21,7 @@ export default function Editor({
   note,
   onContentChange,
   onTitleChange,
+  onReminderChange,
   isActive = true,
   onFocus,
   onClose,
@@ -156,6 +159,9 @@ export default function Editor({
                         minute: "2-digit",
                       })}
                     </span>
+                    {onReminderChange && (
+                      <ReminderPicker note={note} onSetReminder={onReminderChange} />
+                    )}
                   </div>
                 </div>
 

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, Pencil, Check, X, GripVertical, FileText, GitBranch, ListTodo, ChevronLeft, Star } from "lucide-react";
+import { Trash2, Pencil, Check, X, GripVertical, FileText, GitBranch, ListTodo, ChevronLeft, Star, Bell } from "lucide-react";
 import { PlusIcon } from "./ui/plus";
 import type { Note } from "../types";
 import { springSnappy, springGentle, tapScaleSmall, hoverLiftSmall, staggerContainer, staggerItem } from "../lib/animations";
@@ -455,6 +455,14 @@ function SortableNoteItem({
                     fill={note.is_favorite === 1 ? "currentColor" : "none"}
                   />
                 </motion.button>
+                {note.reminder_at && (
+                  <span className="shrink-0 mr-1" title={new Date(note.reminder_at) > new Date() ? "Reminder set" : "Overdue reminder"}>
+                    <Bell
+                      className="w-3 h-3 text-accent/60"
+                      strokeWidth={1.5}
+                    />
+                  </span>
+                )}
                 <div className="flex-1 min-w-0 mr-1.5">
                   <div className="text-[12px] font-medium text-sidebar-text truncate tracking-[-0.01em] leading-snug">
                     {note.title || "Untitled"}

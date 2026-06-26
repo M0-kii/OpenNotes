@@ -252,6 +252,22 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
     });
   }, []);
 
+  const setNoteReminder = useCallback(async (id: string, reminderAt: string | null) => {
+    try {
+      await db.updateNoteReminder(id, reminderAt);
+    } catch (e) {
+      console.error("Failed to update reminder:", e);
+      return;
+    }
+    setNotes((prev) =>
+      prev.map((n) =>
+        n.id === id
+          ? { ...n, reminder_at: reminderAt, reminder_notified: 0, updated_at: new Date().toISOString() }
+          : n
+      )
+    );
+  }, []);
+
   const selectNote = useCallback(
     async (id: string) => {
       if (id === selectedId) return;
@@ -306,6 +322,7 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
     restoreNote,
     permanentlyDeleteNote,
     toggleFavorite,
+    setNoteReminder,
     backlinks,
     refreshBacklinks,
   };

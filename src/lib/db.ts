@@ -103,6 +103,22 @@ export async function initDb(): Promise<void> {
     }
   }
 
+  // Date-based reminders.
+  try {
+    await database.execute("ALTER TABLE notes ADD COLUMN reminder_at TEXT");
+  } catch (e) {
+    if (!String(e).toLowerCase().includes("duplicate column")) {
+      throw e;
+    }
+  }
+  try {
+    await database.execute("ALTER TABLE notes ADD COLUMN reminder_notified INTEGER NOT NULL DEFAULT 0");
+  } catch (e) {
+    if (!String(e).toLowerCase().includes("duplicate column")) {
+      throw e;
+    }
+  }
+
   // Nested folders.
   try {
     await database.execute("ALTER TABLE folders ADD COLUMN parent_id TEXT");
@@ -299,6 +315,8 @@ export async function createNote(
     folder_id: targetFolderId,
     is_favorite: 0,
     deleted_at: null,
+    reminder_at: null,
+    reminder_notified: 0,
     created_at: now,
     updated_at: now,
   };
@@ -574,6 +592,37 @@ export async function moveNoteToFolder(noteId: string, folderId: string | null):
   await database.execute(
     "UPDATE notes SET folder_id = $1, updated_at = $2 WHERE id = $3",
     [folderId, now, noteId]
+  );
+}
+
+export async function updateNoteReminder(id: string, reminderAt: string | null): Promise<void> {
+  const database = await getDb();
+  const now = new Date().toISOString();
+  if (reminderAt) {
+    await database.execute(
+      "UPDATE notes SET reminder_at = $1, reminder_notified = 0, updated_at = $2 WHERE id = $3",
+      [reminderAt, now, id]
+    );
+  } else {
+    await database.execute(
+      "UPDATE notes SET reminder_at = NULL, reminder_notified = 0, updated_at = $1 WHERE id = $2",
+      [now, id]
+    );
+  }
+}
+
+export async function markReminderNotified(id: string): Promise<void> {
+  const database = await getDb();
+  await database.execute(
+    "UPDATE notes SET reminder_notified = 1 WHERE id = $1",
+    [id]
+  );
+}
+
+export async function getDueReminders(): Promise<Note[]> {
+  const database = await getDb();
+  return await database.select<Note[]>(
+    "SELECT * FROM notes WHERE reminder_at IS NOT NULL AND reminder_at <= datetime('now') AND reminder_notified = 0 AND deleted_at IS NULL"
   );
 }
 

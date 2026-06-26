@@ -28,6 +28,8 @@ export interface Note {
   note_type: NoteType;
   is_favorite: number;
   deleted_at: string | null;
+  reminder_at: string | null;
+  reminder_notified: number;
   created_at: string;
   updated_at: string;
 }
