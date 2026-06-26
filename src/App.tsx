@@ -4,6 +4,7 @@ import { Pen } from "lucide-react";
 import { springGentle, springBouncy, easeSmooth } from "./lib/animations";
 import { invoke } from "@tauri-apps/api/core";
 import { useNotes } from "./hooks/useNotes";
+import { useReminders } from "./hooks/useReminders";
 import { useFolders } from "./hooks/useFolders";
 import { useSettings } from "./hooks/useSettings";
 import FoldersSidebar from "./components/FoldersSidebar";
@@ -54,12 +55,15 @@ export default function App() {
     restoreNote,
     permanentlyDeleteNote,
     toggleFavorite,
+    setNoteReminder,
     backlinks,
     refreshBacklinks,
   } = useNotes({
     folderId: folders.selectedFolderId,
     createInFolderId: folders.selectedFolderId ?? settings.defaultFolderId,
   });
+
+  useReminders({ notes });
 
   const [showTrash, setShowTrash] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -269,6 +273,18 @@ export default function App() {
       );
     },
     [renameNote],
+  );
+
+  const handleRightReminderChange = useCallback(
+    (id: string, reminderAt: string | null) => {
+      setNoteReminder(id, reminderAt);
+      setRightNote((n) =>
+        n && n.id === id
+          ? { ...n, reminder_at: reminderAt, reminder_notified: 0, updated_at: new Date().toISOString() }
+          : n,
+      );
+    },
+    [setNoteReminder],
   );
 
   const handleSelectFromSidebar = useCallback(
@@ -606,6 +622,7 @@ export default function App() {
               note={selectedNote}
               onContentChange={saveNoteContent}
               onTitleChange={renameNote}
+              onReminderChange={setNoteReminder}
               layout={settings.mindmapLayout}
               mindmapV2Enabled={settings.mindmapV2Enabled}
               isActive={activePane === "left" || splitNoteId === null}
@@ -645,6 +662,7 @@ export default function App() {
                   note={rightNote}
                   onContentChange={handleRightContentChange}
                   onTitleChange={handleRightTitleChange}
+                  onReminderChange={handleRightReminderChange}
                   layout={settings.mindmapLayout}
                   mindmapV2Enabled={settings.mindmapV2Enabled}
                   isActive={activePane === "right"}

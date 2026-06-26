@@ -8,6 +8,7 @@ interface PaneViewProps {
   note: Note | null;
   onContentChange: (id: string, content: string) => void;
   onTitleChange: (id: string, title: string) => void;
+  onReminderChange?: (id: string, reminderAt: string | null) => void;
   layout?: MindmapLayout;
   mindmapV2Enabled?: boolean;
   isActive?: boolean;
@@ -20,6 +21,7 @@ export default function PaneView({
   note,
   onContentChange,
   onTitleChange,
+  onReminderChange,
   layout,
   mindmapV2Enabled,
   isActive,
@@ -60,6 +62,7 @@ export default function PaneView({
           note={note}
           onContentChange={onContentChange}
           onTitleChange={onTitleChange}
+          onReminderChange={onReminderChange}
           isActive={isActive}
           onFocus={onFocus}
           onClose={onClose}
