@@ -18,6 +18,8 @@ import {
   type History,
 } from "../lib/mindmap/history";
 import { generateId } from "../lib/utils";
+import * as ContextMenu from "@radix-ui/react-context-menu";
+import { toPng } from "html-to-image";
 import Connections from "./MindmapV2/Connections";
 import Node from "./MindmapV2/Node";
 import Toolbar from "./MindmapV2/Toolbar";
@@ -42,6 +44,7 @@ export default function MindmapEditorV2({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -136,6 +139,23 @@ export default function MindmapEditorV2({
   }, [graph, mode, dragShadow]);
 
   const hidden = useMemo(() => hiddenNodes(graph), [graph]);
+
+  const collapsedParents = useMemo(() => {
+    const s = new Set<string>();
+    for (const n of graph.nodes) {
+      if (n.collapsed) s.add(n.id);
+    }
+    return s;
+  }, [graph.nodes]);
+
+  const searchLower = searchQuery.toLowerCase().trim();
+  const matchingNodes = useMemo(() => {
+    if (!searchLower) return null;
+    return new Set(
+      graph.nodes.filter((n) => n.text.toLowerCase().includes(searchLower)).map((n) => n.id),
+    );
+  }, [graph.nodes, searchLower]);
+
   const visibleNodes = useMemo(
     () => graph.nodes.filter((n) => !hidden.has(n.id)),
     [graph.nodes, hidden],
@@ -233,14 +253,26 @@ export default function MindmapEditorV2({
     (id: string, e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      const node = graph.nodes.find((n) => n.id === id);
-      if (node?.pin) {
-        // Single-action context: release the pin so it rejoins auto-layout.
-        dispatch([{ kind: "unpin_node", id }]);
-      }
+      setSelectedId(id);
     },
-    [dispatch, graph.nodes],
+    [],
   );
+
+  const exportPng = useCallback(async () => {
+    if (!containerRef.current) return;
+    try {
+      const dataUrl = await toPng(containerRef.current, {
+        backgroundColor: "#fff",
+        pixelRatio: 2,
+      });
+      const link = document.createElement("a");
+      link.download = `${note?.title || "mindmap"}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (e) {
+      console.error("Failed to export PNG:", e);
+    }
+  }, [note?.title]);
 
   const handleToggleCollapse = useCallback(
     (id: string) => {
@@ -288,8 +320,51 @@ export default function MindmapEditorV2({
     setDragShadow(null);
     if (!shadow || !origin) return;
     if (shadow.x === origin.x && shadow.y === origin.y) return;
+
+    if (mode === "tree" || mode === "radial") {
+      // Reparenting: find nearest non-descendant node within 40px
+      const draggedNode = graph.nodes.find((n) => n.id === shadow.id);
+      if (!draggedNode) return;
+
+      // Collect descendants of dragged node (to exclude as targets)
+      const descendants = new Set<string>();
+      const collectDescendants = (parentId: string) => {
+        for (const n of graph.nodes) {
+          if (n.parentId === parentId && !descendants.has(n.id)) {
+            descendants.add(n.id);
+            collectDescendants(n.id);
+          }
+        }
+      };
+      collectDescendants(shadow.id);
+
+      let closestTarget: string | null = null;
+      let closestDist = 40;
+
+      for (const n of graph.nodes) {
+        if (n.id === shadow.id) continue;
+        if (descendants.has(n.id)) continue;
+        if (n.parentId === draggedNode.parentId) continue; // sibling, skip
+        if (hidden.has(n.id)) continue;
+        const p = positions.get(n.id);
+        if (!p) continue;
+        const dx = shadow.x - p.x;
+        const dy = shadow.y - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closestTarget = n.id;
+        }
+      }
+
+      if (closestTarget) {
+        dispatch([{ kind: "set_node_parent", id: shadow.id, parent_id: closestTarget }]);
+        return;
+      }
+    }
+
     dispatch([{ kind: "pin_node", id: shadow.id, x: shadow.x, y: shadow.y }]);
-  }, [dispatch, dragShadow]);
+  }, [dispatch, dragShadow, mode, graph.nodes, hidden, positions]);
 
   // Canvas pan + zoom (ported from v1).
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -339,6 +414,14 @@ export default function MindmapEditorV2({
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (editingId) return;
+      if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        const input = document.querySelector<HTMLInputElement>(
+          'input[placeholder="Search nodes…"]',
+        );
+        input?.focus();
+        return;
+      }
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === "z") {
         e.preventDefault();
@@ -398,73 +481,122 @@ export default function MindmapEditorV2({
             setPan({ x: 0, y: 0 });
           }}
           onResetPositions={resetPositions}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
           resetPositionsDisabled={pinnedCount === 0}
           onCenter={centerOnRoot}
           centerDisabled={rootId === null}
         />
       )}
 
-      <div
-        ref={containerRef}
-        className="flex-1 relative overflow-hidden cursor-grab"
-        style={{ cursor: isPanning ? "grabbing" : "grab" }}
-        onDoubleClick={handleDoubleClickCanvas}
-        onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
-      >
-        <Connections
-          nodes={visibleNodes}
-          positions={positions}
-          hidden={hidden}
-          mode={mode}
-          zoom={zoom}
-          pan={pan}
-        />
-
-        {visibleNodes.map((node) => {
-          const pos = positions.get(node.id);
-          if (!pos) return null;
-          return (
-            <Node
-              key={node.id}
-              node={node}
-              position={pos}
+      <ContextMenu.Root>
+        <ContextMenu.Trigger asChild>
+          <div
+            ref={containerRef}
+            className="flex-1 relative overflow-hidden cursor-grab"
+            style={{ cursor: isPanning ? "grabbing" : "grab" }}
+            onDoubleClick={handleDoubleClickCanvas}
+            onWheel={handleWheel}
+            onMouseDown={handleMouseDown}
+          >
+            <Connections
+              nodes={visibleNodes}
+              positions={positions}
+              hidden={hidden}
+              collapsedParents={collapsedParents}
+              mode={mode}
               zoom={zoom}
               pan={pan}
-              isSelected={selectedId === node.id}
-              isEditing={editingId === node.id}
-              editText={editText}
-              hasChildren={(childCount.get(node.id) ?? 0) > 0}
-              onSelect={() => {
-                setSelectedId(node.id);
-                if (editingId !== node.id) setEditingId(null);
-              }}
-              onStartEdit={() => {
-                setEditingId(node.id);
-                setEditText(node.text);
-              }}
-              onEditChange={setEditText}
-              onConfirmEdit={confirmEdit}
-              onCancelEdit={() => setEditingId(null)}
-              onAddChild={() => handleAddChild(node.id)}
-              onDelete={() => handleDeleteNode(node.id)}
-              onContextMenu={(e) => handleNodeContextMenu(node.id, e)}
-              onToggleCollapse={() => handleToggleCollapse(node.id)}
-              onDragStart={() => handleDragStart(node.id)}
-              onDrag={handleDrag}
-              onDragEnd={handleDragEnd}
+              onToggleCollapse={handleToggleCollapse}
             />
-          );
-        })}
 
-        {graph.nodes.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <p className="text-[13px] text-editor-text/20 tracking-[-0.01em]">
-              Double-click to add a node
-            </p>
+            {visibleNodes.map((node) => {
+              const pos = positions.get(node.id);
+              if (!pos) return null;
+              const isDimmed = matchingNodes !== null && !matchingNodes.has(node.id);
+              const isHighlighted = matchingNodes !== null && matchingNodes.has(node.id);
+              return (
+                <Node
+                  key={node.id}
+                  node={node}
+                  position={pos}
+                  zoom={zoom}
+                  pan={pan}
+                  isSelected={selectedId === node.id}
+                  isEditing={editingId === node.id}
+                  editText={editText}
+                  hasChildren={(childCount.get(node.id) ?? 0) > 0}
+                  dimmed={isDimmed}
+                  highlighted={isHighlighted}
+                  onSelect={() => {
+                    setSelectedId(node.id);
+                    if (editingId !== node.id) setEditingId(null);
+                  }}
+                  onStartEdit={() => {
+                    setEditingId(node.id);
+                    setEditText(node.text);
+                  }}
+                  onEditChange={setEditText}
+                  onConfirmEdit={confirmEdit}
+                  onCancelEdit={() => setEditingId(null)}
+                  onAddChild={() => handleAddChild(node.id)}
+                  onDelete={() => handleDeleteNode(node.id)}
+                  onContextMenu={(e) => handleNodeContextMenu(node.id, e)}
+                  onToggleCollapse={() => handleToggleCollapse(node.id)}
+                  onDragStart={() => handleDragStart(node.id)}
+                  onDrag={handleDrag}
+                  onDragEnd={handleDragEnd}
+                />
+              );
+            })}
+
+            {graph.nodes.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <p className="text-[13px] text-editor-text/20 tracking-[-0.01em]">
+                  Double-click to add a node
+                </p>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </ContextMenu.Trigger>
+
+        <ContextMenu.Portal>
+          <ContextMenu.Content
+            className="z-[9999] min-w-[160px] rounded-xl border border-border bg-surface-elevated
+                       py-1 shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.35)]
+                       backdrop-blur-xl"
+          >
+            <ContextMenu.Item
+              onSelect={() => handleDoubleClickCanvas({} as React.MouseEvent)}
+              className="text-[12px] text-editor-text/70 px-3 py-1.5 outline-none
+                         cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
+                         flex items-center gap-2 tracking-[-0.01em]"
+            >
+              New node
+            </ContextMenu.Item>
+            <ContextMenu.Item
+              onSelect={() => {
+                setZoom(1);
+                setPan({ x: 0, y: 0 });
+              }}
+              className="text-[12px] text-editor-text/70 px-3 py-1.5 outline-none
+                         cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
+                         flex items-center gap-2 tracking-[-0.01em]"
+            >
+              Reset view
+            </ContextMenu.Item>
+            <ContextMenu.Separator className="mx-2 my-1 h-px bg-border" />
+            <ContextMenu.Item
+              onSelect={exportPng}
+              className="text-[12px] text-editor-text/70 px-3 py-1.5 outline-none
+                         cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
+                         flex items-center gap-2 tracking-[-0.01em]"
+            >
+              Export as PNG
+            </ContextMenu.Item>
+          </ContextMenu.Content>
+        </ContextMenu.Portal>
+      </ContextMenu.Root>
     </div>
   );
 }

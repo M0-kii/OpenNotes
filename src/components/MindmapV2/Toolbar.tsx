@@ -1,4 +1,5 @@
-import { Locate, Maximize, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import { Locate, Maximize, RotateCcw, ZoomIn, ZoomOut, Search, CircleHelp } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
 import type { LayoutMode } from "../../lib/mindmap/types";
 
 interface Props {
@@ -12,6 +13,8 @@ interface Props {
   resetPositionsDisabled: boolean;
   onCenter: () => void;
   centerDisabled: boolean;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
   // Future hookup: AI generation lock. Surface ships now, behavior later.
   aiBusy?: boolean;
 }
@@ -33,6 +36,8 @@ export default function Toolbar({
   resetPositionsDisabled,
   onCenter,
   centerDisabled,
+  searchQuery,
+  onSearchChange,
   aiBusy,
 }: Props) {
   return (
@@ -64,6 +69,33 @@ export default function Toolbar({
         })}
       </div>
 
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-editor-text/30" strokeWidth={1.5} />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search nodes…"
+          className="w-36 text-[11px] bg-black/[0.03] dark:bg-white/[0.04] text-editor-text
+                     rounded-md py-1 pl-6 pr-2
+                     placeholder:text-editor-text/25
+                     outline-none
+                     focus:bg-black/[0.06] dark:focus:bg-white/[0.06]
+                     transition-colors tracking-[-0.01em]"
+          spellCheck={false}
+        />
+        {searchQuery && (
+          <button
+            onClick={() => onSearchChange("")}
+            className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded-sm
+                       text-editor-text/25 hover:text-editor-text/60 transition-colors"
+          >
+            <span className="text-[10px] leading-none">&times;</span>
+          </button>
+        )}
+      </div>
+
       <button
         onClick={onResetPositions}
         disabled={resetPositionsDisabled}
@@ -89,6 +121,53 @@ export default function Toolbar({
       </button>
 
       <div className="flex-1" />
+
+      {/* Shortcut hints */}
+      <Popover.Root>
+        <Popover.Trigger asChild>
+          <button
+            className="p-1 rounded-md text-editor-text/25 hover:text-editor-text/50
+                       hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
+            title="Keyboard shortcuts"
+          >
+            <CircleHelp className="w-3.5 h-3.5" strokeWidth={1.5} />
+          </button>
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content
+            side="bottom"
+            align="end"
+            sideOffset={6}
+            className="z-[9999] rounded-xl border border-border bg-surface-elevated p-3
+                       shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.35)]
+                       backdrop-blur-xl min-w-[180px]"
+          >
+            <div className="space-y-1.5">
+              <p className="text-[11px] text-editor-text/40 font-medium tracking-[-0.01em] mb-2">
+                Shortcuts
+              </p>
+              {[
+                ["Tab", "Add child node"],
+                ["Delete", "Delete selected node"],
+                ["Enter", "Edit selected node"],
+                ["/", "Search nodes"],
+                ["Ctrl+Z", "Undo"],
+                ["Ctrl+Shift+Z", "Redo"],
+                ["Escape", "Deselect / cancel"],
+              ].map(([key, desc]) => (
+                <div key={key} className="flex items-center justify-between gap-4">
+                  <kbd className="text-[10px] text-editor-text/70 bg-black/[0.06] dark:bg-white/[0.06]
+                                  rounded px-1.5 py-0.5 font-mono leading-none">
+                    {key}
+                  </kbd>
+                  <span className="text-[10px] text-editor-text/40 tracking-[-0.01em]">{desc}</span>
+                </div>
+              ))}
+            </div>
+            <Popover.Arrow className="fill-surface-elevated" />
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
 
       <span className="text-[11px] text-editor-text/35 tracking-[-0.01em] tabular-nums">
         {Math.round(zoom * 100)}%

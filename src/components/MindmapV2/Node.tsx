@@ -13,6 +13,8 @@ interface Props {
   isEditing: boolean;
   editText: string;
   hasChildren: boolean;
+  dimmed: boolean;
+  highlighted: boolean;
   onSelect: () => void;
   onStartEdit: () => void;
   onEditChange: (v: string) => void;
@@ -36,6 +38,8 @@ export default function Node({
   isEditing,
   editText,
   hasChildren,
+  dimmed,
+  highlighted,
   onSelect,
   onStartEdit,
   onEditChange,
@@ -136,7 +140,9 @@ export default function Node({
         }}
         onContextMenu={onContextMenu}
         className={`relative w-full h-full rounded-[8px] border flex items-center justify-center
-                    transition-colors duration-150 cursor-pointer select-none
+                    transition-all duration-150 cursor-pointer select-none
+                    ${dimmed ? "opacity-20" : ""}
+                    ${highlighted ? "ring-2 ring-accent/40" : ""}
                     ${
                       isSelected
                         ? "border-accent bg-accent-soft"
