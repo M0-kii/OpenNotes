@@ -75,7 +75,7 @@ export default function NoteTypePopup({
               onClose();
             }}
             className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px]
-                       text-sidebar-text/80 hover:bg-white/[0.06]
+                       text-sidebar-text/80 hover:bg-hover-subtle
                        transition-colors duration-100 tracking-[-0.01em]"
           >
             <FileText className="w-3.5 h-3.5 text-sidebar-textSecondary" strokeWidth={1.5} />
@@ -87,7 +87,7 @@ export default function NoteTypePopup({
               onClose();
             }}
             className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px]
-                       text-sidebar-text/80 hover:bg-white/[0.06]
+                       text-sidebar-text/80 hover:bg-hover-subtle
                        transition-colors duration-100 tracking-[-0.01em]"
           >
             <GitBranch className="w-3.5 h-3.5 text-sidebar-textSecondary" strokeWidth={1.5} />
@@ -99,7 +99,7 @@ export default function NoteTypePopup({
               onClose();
             }}
             className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px]
-                       text-sidebar-text/80 hover:bg-white/[0.06]
+                       text-sidebar-text/80 hover:bg-hover-subtle
                        transition-colors duration-100 tracking-[-0.01em]"
           >
             <ListTodo className="w-3.5 h-3.5 text-sidebar-textSecondary" strokeWidth={1.5} />

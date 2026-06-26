@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Sun, Moon, Monitor } from "lucide-react";
 import type { Theme } from "../types";
+import { springBouncy, tapScaleSmall, hoverLiftSmall, springSnappy } from "../lib/animations";
 
 interface ThemeToggleProps {
   theme: Theme;
@@ -18,8 +19,9 @@ export default function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
 
   return (
     <motion.button
-      whileHover={{ scale: 1.08 }}
-      whileTap={{ scale: 0.92 }}
+      whileHover={hoverLiftSmall}
+      whileTap={tapScaleSmall}
+      transition={springBouncy}
       onClick={onToggle}
       className="p-1.5 rounded-btn text-sidebar-textSecondary/70
                  hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
@@ -30,10 +32,10 @@ export default function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
       <AnimatePresence mode="wait">
         <motion.div
           key={theme}
-          initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
-          animate={{ rotate: 0, opacity: 1, scale: 1 }}
-          exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
+          initial={{ opacity: 0, rotate: -45, scale: 0.6 }}
+          animate={{ opacity: 1, rotate: 0, scale: 1 }}
+          exit={{ opacity: 0, rotate: 45, scale: 0.6 }}
+          transition={springSnappy}
         >
           <Icon className="w-[15px] h-[15px]" />
         </motion.div>

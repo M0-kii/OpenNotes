@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { springGentle } from "../../lib/animations";
 import {
   Heading1,
   Heading2,
@@ -110,10 +111,10 @@ export default function SlashMenu({
       {open && (
         <motion.div
           ref={menuRef}
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 4 }}
-          transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          initial={{ opacity: 0, y: 4, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 4, scale: 0.97 }}
+          transition={springGentle}
           style={{
             position: "fixed",
             top: position.top,

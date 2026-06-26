@@ -19,7 +19,7 @@ const itemClass = cn(
   "flex items-center gap-2 px-3 py-1.5 text-[12px] tracking-[-0.01em]",
   "outline-none cursor-default select-none",
   "rounded-[6px] mx-1",
-  "data-[highlighted]:bg-white/[0.06]",
+  "data-[highlighted]:bg-hover-subtle",
   "data-[disabled]:opacity-30 data-[disabled]:pointer-events-none",
   "transition-colors duration-100"
 );

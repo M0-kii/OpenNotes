@@ -55,7 +55,7 @@ export default function EditorContextMenu({ children, editorRef }: EditorContext
     "flex items-center gap-2 px-3 py-1.5 text-[12px] tracking-[-0.01em]",
     "text-sidebar-text/80 outline-none cursor-default select-none",
     "rounded-[6px] mx-1",
-    "data-[highlighted]:bg-white/[0.06] data-[highlighted]:text-sidebar-text",
+    "data-[highlighted]:bg-hover-subtle data-[highlighted]:text-sidebar-text",
     "data-[disabled]:opacity-30 data-[disabled]:pointer-events-none",
     "transition-colors duration-100"
   );
