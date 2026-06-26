@@ -5,15 +5,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Folder,
-  FolderPlus,
   Folders,
   GripVertical,
   Pencil,
-  Plus,
-  Settings,
   Trash2,
   X,
 } from "lucide-react";
+import { FolderPlusIcon } from "./ui/folder-plus";
+import { SettingsIcon } from "./ui/settings";
+import { PlusIcon } from "./ui/plus";
 import type { Folder as FolderType, FolderNode } from "../types";
 import GenericContextMenu from "./ui/GenericContextMenu";
 import { springSnappy, hoverLiftSmall, tapScaleSmall, tapScale, staggerContainer, staggerItem } from "../lib/animations";
@@ -399,7 +399,7 @@ export default function FoldersSidebar({
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <GenericContextMenu
           items={[
-            { label: "New folder", icon: FolderPlus, onClick: () => startNewFolder(null) },
+            { label: "New folder", icon: FolderPlusIcon, onClick: () => startNewFolder(null) },
           ]}
         >
           {/* All Notes */}
@@ -646,9 +646,9 @@ export default function FoldersSidebar({
             whileHover={hoverLiftSmall}
             whileTap={tapScaleSmall}
           >
-            <FolderPlus
-              className="w-[14px] h-[14px] shrink-0"
-              strokeWidth={1.5}
+            <FolderPlusIcon
+              size={14}
+              className="shrink-0"
             />
           </motion.div>
           <AnimatePresence mode="wait">
@@ -718,7 +718,7 @@ export default function FoldersSidebar({
             whileHover={hoverLiftSmall}
             whileTap={tapScaleSmall}
           >
-            <Settings className="w-[14px] h-[14px] shrink-0" strokeWidth={1.5} />
+            <SettingsIcon size={14} className="shrink-0" />
           </motion.div>
           <AnimatePresence mode="wait">
             {!collapsed && (
@@ -849,7 +849,7 @@ function SortableFolderItem({
         items={[
           {
             label: "New subfolder",
-            icon: Plus,
+            icon: PlusIcon,
             onClick: () => onNewSubfolder(folder),
           },
           {

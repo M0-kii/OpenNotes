@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Pencil, Check, X, GripVertical, FileText, GitBranch, ListTodo, ChevronLeft, Star } from "lucide-react";
+import { Trash2, Pencil, Check, X, GripVertical, FileText, GitBranch, ListTodo, ChevronLeft, Star } from "lucide-react";
+import { PlusIcon } from "./ui/plus";
 import type { Note } from "../types";
 import { springSnappy, springGentle, tapScaleSmall, hoverLiftSmall, staggerContainer, staggerItem } from "../lib/animations";
 import SearchBar from "./SearchBar";
@@ -201,7 +202,7 @@ export default function Sidebar({
                            transition-colors duration-150"
                 title="New note or mind map"
               >
-                <Plus className="w-[15px] h-[15px]" />
+                <PlusIcon size={15} />
               </motion.button>
               <NoteTypePopup
                 open={popupOpen}

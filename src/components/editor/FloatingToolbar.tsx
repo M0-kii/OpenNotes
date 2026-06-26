@@ -1,7 +1,9 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bold, Italic, Code, Strikethrough } from "lucide-react";
+import { Code, Strikethrough } from "lucide-react";
+import { BoldIcon } from "../ui/bold";
+import { ItalicIcon } from "../ui/italic";
 import type { ActiveFormats } from "./formattingUtils";
 
 interface FloatingToolbarProps {
@@ -56,14 +58,14 @@ export default function FloatingToolbar({
   const buttons = [
     {
       key: "bold" as const,
-      icon: Bold,
+      icon: BoldIcon,
       onClick: onBold,
       label: "Bold",
       shortcut: "Ctrl+B",
     },
     {
       key: "italic" as const,
-      icon: Italic,
+      icon: ItalicIcon,
       onClick: onItalic,
       label: "Italic",
       shortcut: "Ctrl+I",
