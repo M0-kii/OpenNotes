@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Pen } from "lucide-react";
 import { springGentle, springBouncy, easeSmooth } from "./lib/animations";
 import { invoke } from "@tauri-apps/api/core";
+import { useEditorWorkspace } from "./hooks/useEditorWorkspace";
+import { useSaveLifecycle } from "./hooks/useSaveLifecycle";
 import { useNotes } from "./hooks/useNotes";
 import { useReminders } from "./hooks/useReminders";
 import { useFolders } from "./hooks/useFolders";
@@ -19,13 +21,12 @@ import SettingsDialog from "./components/settings/SettingsDialog";
 import SplitDivider from "./components/SplitDivider";
 import {
   getNoteCountsByFolder,
-  getNoteById,
   moveNoteToFolder,
   emptyTrash,
 } from "./lib/db";
 import QuickSwitcher from "./components/QuickSwitcher";
 import ConfirmDialog from "./components/ConfirmDialog";
-import type { Note, Folder } from "./types";
+import type { Folder } from "./types";
 
 export default function App() {
   const folders = useFolders();
@@ -43,6 +44,9 @@ export default function App() {
     setSearchQuery,
     isLoading: notesLoading,
     error: notesError,
+    saveError,
+    hasPendingSaves,
+    flushSave,
     createNote,
     deleteNote,
     renameNote,
@@ -64,176 +68,50 @@ export default function App() {
   });
 
   useReminders({ notes });
+  const requestClose = useSaveLifecycle(flushSave);
 
   const [showTrash, setShowTrash] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [noteCounts, setNoteCounts] = useState<Record<string, number>>({});
 
-  // Split-editor state. splitNoteId === null → single pane (today's UX).
-  // When set, two editors render side-by-side. activePane drives where
-  // sidebar clicks and new-note creation land.
-  const [splitNoteId, setSplitNoteId] = useState<string | null>(null);
-  const [activePane, setActivePane] = useState<"left" | "right">("left");
   const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{
     id: string;
     type: "note" | "folder";
   } | null>(null);
-  const [rightNote, setRightNote] = useState<Note | null>(null);
-  const [splitRatio, setSplitRatio] = useState<number>(() => {
-    const raw = parseFloat(localStorage.getItem("opennotes-split-ratio") || "");
-    return Number.isFinite(raw) && raw >= 0.2 && raw <= 0.8 ? raw : 0.5;
-  });
   const editorPaneRef = useRef<HTMLDivElement>(null);
-
-  // Drag state for snap layout zones
-  const [isDraggingNote, setIsDraggingNote] = useState(false);
-
-  // Tab state — arrays of note IDs per pane
-  const [leftPaneTabs, setLeftPaneTabs] = useState<string[]>([]);
-  const [rightPaneTabs, setRightPaneTabs] = useState<string[]>([]);
-
-  const leftTabInfos = leftPaneTabs.map((id) => {
-    const note = notes.find((n) => n.id === id);
-    return { id, title: note?.title || "Untitled" };
+  const {
+    splitNoteId,
+    setSplitNoteId,
+    activePane,
+    setActivePane,
+    rightNote,
+    splitRatio,
+    isDraggingNote,
+    leftPaneTabs,
+    rightPaneTabs,
+    leftTabInfos,
+    rightTabInfos,
+    closeSplit,
+    openInRight,
+    openInSplit,
+    openInLeft,
+    handleDragStart,
+    handleDragEndDrag,
+    handleDropZone,
+    closeLeftTab,
+    closeRightTab,
+    switchLeftTab,
+    switchRightTab,
+    handleRightContentChange,
+    handleRightTitleChange,
+    handleRightReminderChange,
+    handleSelectFromSidebar,
+    handleResize,
+    handleResizeEnd,
+  } = useEditorWorkspace({
+    notes, selectedId, selectNote, saveNoteContent, renameNote, setNoteReminder,
   });
-  const rightTabInfos = rightPaneTabs.map((id) => {
-    const note = notes.find((n) => n.id === id);
-    return { id, title: note?.title || "Untitled" };
-  });
-
-  // Hydrate the right pane note whenever splitNoteId changes.
-  useEffect(() => {
-    if (!splitNoteId) {
-      setRightNote(null);
-      return;
-    }
-    let cancelled = false;
-    // Prefer the in-memory copy from the notes list (so updates flow
-    // through naturally); fall back to a DB fetch if the note is filtered
-    // out of the current view.
-    const cached = notes.find((n) => n.id === splitNoteId);
-    if (cached) {
-      setRightNote(cached);
-      return;
-    }
-    getNoteById(splitNoteId).then((n) => {
-      if (!cancelled) setRightNote(n);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [splitNoteId, notes]);
-
-  // Auto-add to left pane tabs when a note is selected (e.g. via createNote)
-  useEffect(() => {
-    if (selectedId && !leftPaneTabs.includes(selectedId)) {
-      setLeftPaneTabs((prev) => [...prev, selectedId]);
-    }
-  }, [selectedId]);
-
-  // Auto-add to right pane tabs when split note is set
-  useEffect(() => {
-    if (splitNoteId && !rightPaneTabs.includes(splitNoteId)) {
-      setRightPaneTabs((prev) => [...prev, splitNoteId]);
-    }
-  }, [splitNoteId]);
-
-  const closeSplit = useCallback(() => {
-    setSplitNoteId(null);
-    setRightPaneTabs([]);
-    setActivePane("left");
-  }, []);
-
-  const openInRight = useCallback((noteId: string) => {
-    setRightPaneTabs((prev) =>
-      prev.includes(noteId) ? prev : [...prev, noteId],
-    );
-    setSplitNoteId(noteId);
-    setActivePane("right");
-  }, []);
-
-  const openInSplit = useCallback(
-    (noteId: string) => {
-      openInRight(noteId);
-    },
-    [openInRight],
-  );
-
-  const openInLeft = useCallback(
-    (noteId: string) => {
-      setLeftPaneTabs((prev) =>
-        prev.includes(noteId) ? prev : [...prev, noteId],
-      );
-      selectNote(noteId);
-    },
-    [selectNote],
-  );
-
-  const handleDragStart = useCallback(() => setIsDraggingNote(true), []);
-  const handleDragEndDrag = useCallback(() => setIsDraggingNote(false), []);
-
-  const handleDropZone = useCallback(
-    (noteId: string, zone: string) => {
-      if (zone === "tab") {
-        openInLeft(noteId);
-      } else {
-        openInRight(noteId);
-      }
-    },
-    [openInLeft, openInRight],
-  );
-
-  const closeLeftTab = useCallback(
-    (index: number) => {
-      const closedId = leftPaneTabs[index];
-      const newTabs = leftPaneTabs.filter((_, i) => i !== index);
-      setLeftPaneTabs(newTabs);
-      if (selectedId === closedId && newTabs.length > 0) {
-        const newIndex = Math.min(index, newTabs.length - 1);
-        selectNote(newTabs[newIndex]);
-      }
-    },
-    [leftPaneTabs, selectedId, selectNote],
-  );
-
-  const closeRightTab = useCallback(
-    (index: number) => {
-      const closedId = rightPaneTabs[index];
-      const newTabs = rightPaneTabs.filter((_, i) => i !== index);
-      setRightPaneTabs(newTabs);
-      if (splitNoteId === closedId) {
-        if (newTabs.length > 0) {
-          const newIndex = Math.min(index, newTabs.length - 1);
-          setSplitNoteId(newTabs[newIndex]);
-        } else {
-          setSplitNoteId(null);
-          setActivePane("left");
-        }
-      }
-    },
-    [rightPaneTabs, splitNoteId],
-  );
-
-  const switchLeftTab = useCallback(
-    (index: number) => {
-      const noteId = leftPaneTabs[index];
-      if (noteId) selectNote(noteId);
-    },
-    [leftPaneTabs, selectNote],
-  );
-
-  const switchRightTab = useCallback(
-    (index: number) => {
-      const noteId = rightPaneTabs[index];
-      if (noteId) {
-        setSplitNoteId(noteId);
-        setActivePane("right");
-      }
-    },
-    [rightPaneTabs],
-  );
-
   const createNewTab = useCallback(() => {
     createNote("note");
   }, [createNote]);
@@ -250,65 +128,6 @@ export default function App() {
     },
     [refreshNotes],
   );
-
-  const handleRightContentChange = useCallback(
-    (id: string, content: string) => {
-      saveNoteContent(id, content);
-      setRightNote((n) =>
-        n && n.id === id
-          ? { ...n, content, updated_at: new Date().toISOString() }
-          : n,
-      );
-    },
-    [saveNoteContent],
-  );
-
-  const handleRightTitleChange = useCallback(
-    (id: string, title: string) => {
-      renameNote(id, title);
-      setRightNote((n) =>
-        n && n.id === id
-          ? { ...n, title, updated_at: new Date().toISOString() }
-          : n,
-      );
-    },
-    [renameNote],
-  );
-
-  const handleRightReminderChange = useCallback(
-    (id: string, reminderAt: string | null) => {
-      setNoteReminder(id, reminderAt);
-      setRightNote((n) =>
-        n && n.id === id
-          ? { ...n, reminder_at: reminderAt, reminder_notified: 0, updated_at: new Date().toISOString() }
-          : n,
-      );
-    },
-    [setNoteReminder],
-  );
-
-  const handleSelectFromSidebar = useCallback(
-    (id: string, openInSplitToo?: boolean) => {
-      if (openInSplitToo) {
-        openInRight(id);
-        return;
-      }
-      if (activePane === "right" && splitNoteId !== null) {
-        openInRight(id);
-      } else {
-        openInLeft(id);
-      }
-    },
-    [activePane, splitNoteId, openInLeft, openInRight],
-  );
-
-  const handleResize = useCallback((ratio: number) => {
-    setSplitRatio(ratio);
-  }, []);
-
-  const handleResizeEnd = useCallback((ratio: number) => {
-    localStorage.setItem("opennotes-split-ratio", String(ratio));
-  }, []);
 
   // Refresh counts whenever the underlying notes list changes.
   useEffect(() => {
@@ -464,7 +283,7 @@ export default function App() {
           transition={{ duration: 0.5, ease: "easeInOut" }}
           className="flex h-screen w-screen flex-col bg-sidebar-bg"
         >
-          <TitleBar style={settings.titlebarStyle} />
+          <TitleBar style={settings.titlebarStyle} onClose={requestClose} />
 
           <div className="flex flex-1 items-center justify-center">
             <div className="flex flex-col items-center gap-5">
@@ -530,7 +349,7 @@ export default function App() {
   if (error) {
     return (
       <div className="h-screen w-screen flex flex-col bg-sidebar-bg">
-        <TitleBar style={settings.titlebarStyle} />
+        <TitleBar style={settings.titlebarStyle} onClose={requestClose} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md px-4">
             <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
@@ -566,7 +385,12 @@ export default function App() {
       onContextMenu={(e) => e.preventDefault()}
     >
       <SettingsApplier settings={settings} />
-      <TitleBar style={settings.titlebarStyle} />
+      <TitleBar style={settings.titlebarStyle} onClose={requestClose} />
+      <div role={saveError ? "alert" : "status"} aria-live={saveError ? "assertive" : "polite"}
+        className="flex items-center justify-end gap-3 px-4 py-1 text-xs text-sidebar-textSecondary bg-sidebar-bg border-b border-border">
+        <span>{saveError ?? (hasPendingSaves ? "Saving…" : "All changes saved")}</span>
+        {saveError && <button className="text-accent underline" onClick={() => { void flushSave(); }}>Retry now</button>}
+      </div>
       <div className="flex-1 flex overflow-hidden">
         <FoldersSidebar
           folderTree={folders.folderTree}
@@ -731,6 +555,7 @@ export default function App() {
           onPermanentlyDeleteNote={permanentlyDeleteNote}
           onPermanentlyDeleteFolder={folders.permanentlyDeleteFolder}
           onEmptyTrash={async () => {
+            if (!await flushSave()) return;
             await emptyTrash();
             refreshTrashedNotes();
             folders.refreshTrashedFolders();

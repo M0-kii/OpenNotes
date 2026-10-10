@@ -9,7 +9,8 @@ import TableToolbar, { getParentCell } from "./TableToolbar";
 import SlashMenu from "./SlashMenu";
 import LinkMenu from "./LinkMenu";
 import EditorContextMenu from "../ui/EditorContextMenu";
-import Prism from "prismjs";
+import { applyMarkdownShortcutsInBlock, highlightCodeBlocks, highlightWikilinks } from "./editorDom";
+import { FLUSH_EDITORS_EVENT } from "../../hooks/useSaveLifecycle";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-python";
@@ -25,162 +26,6 @@ interface RichEditorProps {
   onContentChange: (content: string) => void;
   onFocus?: () => void;
   notes?: Note[];
-}
-
-// Walk text nodes in a block and apply markdown shortcut patterns.
-// Mutates the DOM. Returns the range that was saved before mutation.
-function applyMarkdownShortcutsInBlock(block: HTMLElement): Range | null {
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) return null;
-  const savedRange = sel.getRangeAt(0).cloneRange();
-
-  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
-  const textNodes: Text[] = [];
-
-  while (walker.nextNode()) {
-    const textNode = walker.currentNode as Text;
-    // Skip text inside code, pre, or already-formatted elements
-    let parent: HTMLElement | null = textNode.parentElement;
-    let skip = false;
-    while (parent && parent !== block) {
-      const tag = parent.tagName.toLowerCase();
-      if (
-        tag === "code" ||
-        tag === "pre" ||
-        tag === "strong" ||
-        tag === "em" ||
-        tag === "del"
-      ) {
-        skip = true;
-        break;
-      }
-      parent = parent.parentElement;
-    }
-    if (!skip && textNode.textContent) {
-      textNodes.push(textNode);
-    }
-  }
-
-  let changed = false;
-
-  for (const textNode of textNodes) {
-    let html = textNode.textContent ?? "";
-
-    // Inline patterns (ordered: bold first to avoid conflict with italic's single asterisk)
-    const inlineReplacements: Array<{ regex: RegExp; template: string }> = [
-      { regex: /\*\*(.+?)\*\*/g, template: "<strong>$1</strong>" },
-      { regex: /~~(.+?)~~/g, template: "<del>$1</del>" },
-      { regex: /\*(.+?)\*/g, template: "<em>$1</em>" },
-      { regex: /`([^`\n]+?)`/g, template: "<code>$1</code>" },
-    ];
-
-    for (const { regex, template } of inlineReplacements) {
-      const newHtml = html.replace(regex, template);
-      if (newHtml !== html) {
-        html = newHtml;
-        changed = true;
-      }
-    }
-
-    if (changed && textNode.parentNode) {
-      const span = document.createElement("span");
-      span.innerHTML = html;
-      const parent = textNode.parentNode;
-      while (span.firstChild) {
-        parent.insertBefore(span.firstChild, textNode);
-      }
-      parent.removeChild(textNode);
-      parent.normalize();
-    }
-  }
-
-  // Block-level conversions: check if entire block text matches a heading/list pattern
-  if (!changed) {
-    const blockText = block.textContent ?? "";
-    const blockTag = block.tagName.toLowerCase();
-
-    const isDefaultBlock =
-      blockTag === "div" || blockTag === "p" || blockTag === "body" || !blockTag;
-
-    if (isDefaultBlock) {
-      const blockPatterns: Array<{
-        regex: RegExp;
-        tag: string;
-        template: string;
-      }> = [
-        { regex: /^###\s+(.+)/, tag: "h3", template: "<h3>$1</h3>" },
-        { regex: /^##\s+(.+)/, tag: "h2", template: "<h2>$1</h2>" },
-        { regex: /^#\s+(.+)/, tag: "h1", template: "<h1>$1</h1>" },
-        { regex: /^>\s+(.+)/, tag: "blockquote", template: "<blockquote>$1</blockquote>" },
-        { regex: /^-\s+(.+)/, tag: "ul", template: "<ul><li>$1</li></ul>" },
-        {
-          regex: /^\d+\.\s+(.+)/,
-          tag: "ol",
-          template: "<ol><li>$1</li></ol>",
-        },
-      ];
-
-      for (const { regex, template } of blockPatterns) {
-        const match = blockText.match(regex);
-        if (match) {
-          const temp = document.createElement("div");
-          temp.innerHTML = template;
-          if (temp.firstChild) {
-            block.parentNode?.replaceChild(temp.firstChild, block);
-            changed = true;
-          }
-          break;
-        }
-      }
-    }
-  }
-
-  if (!changed) return null;
-  return savedRange;
-}
-
-function highlightCodeBlocks(container: HTMLElement) {
-  container.querySelectorAll("pre code").forEach((block) => {
-    Prism.highlightElement(block as HTMLElement);
-  });
-  container.querySelectorAll("pre[data-language]").forEach((pre) => {
-    if (!pre.querySelector(".code-lang-label")) {
-      const label = document.createElement("span");
-      label.className = "code-lang-label";
-      label.contentEditable = "false";
-      label.textContent = pre.getAttribute("data-language") || "plaintext";
-      pre.appendChild(label);
-    }
-  });
-}
-
-function highlightWikilinks(container: HTMLElement) {
-  const walker = document.createTreeWalker(
-    container,
-    NodeFilter.SHOW_TEXT,
-    {
-      acceptNode: (node) =>
-        node.textContent?.includes("[[") ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP,
-    }
-  );
-  const textNodes: Text[] = [];
-  while (walker.nextNode()) {
-    textNodes.push(walker.currentNode as Text);
-  }
-  for (const textNode of textNodes) {
-    const html = textNode.textContent!.replace(
-      /\[\[([^\[\]\|]+?)(?:\|([^\[\]]+?))?\]\]/g,
-      (_, target, alias) => {
-        const display = alias || target;
-        return `<span class="wiki-link" data-target="${target}" contenteditable="false">${display}</span>`;
-      }
-    );
-    if (html !== textNode.textContent) {
-      const span = document.createElement("span");
-      span.innerHTML = html;
-      textNode.parentNode?.replaceChild(span, textNode);
-    }
-  }
 }
 
 export default function RichEditor({
@@ -225,6 +70,15 @@ export default function RichEditor({
     onContentChange(md);
   }, [onContentChange]);
 
+  const saveContentRef = useRef(saveContent);
+  saveContentRef.current = saveContent;
+
+  useEffect(() => {
+    const collect = () => saveContentRef.current();
+    window.addEventListener(FLUSH_EDITORS_EVENT, collect);
+    return () => window.removeEventListener(FLUSH_EDITORS_EVENT, collect);
+  }, []);
+
   // Sync content prop → DOM (only on initial load or external content change)
   useEffect(() => {
     if (!editorRef.current) return;
@@ -243,13 +97,12 @@ export default function RichEditor({
       if (editorRef.current) highlightCodeBlocks(editorRef.current);
     });
 
-    if (!didInitialLoadRef.current) {
-      didInitialLoadRef.current = true;
-    }
+    const shouldFocus = !didInitialLoadRef.current;
+    didInitialLoadRef.current = true;
 
     requestAnimationFrame(() => {
       isUpdatingFromProp.current = false;
-      if (editorRef.current && !didInitialLoadRef.current) {
+      if (editorRef.current && shouldFocus) {
         editorRef.current.focus();
       }
     });
@@ -258,7 +111,7 @@ export default function RichEditor({
   // Periodic save
   useEffect(() => {
     const interval = setInterval(() => {
-      saveContent();
+      if (!isComposingRef.current) saveContentRef.current();
       // Only highlight if editor not focused (avoid disrupting active typing in code blocks)
       if (editorRef.current && document.activeElement !== editorRef.current) {
         highlightCodeBlocks(editorRef.current);
@@ -266,9 +119,9 @@ export default function RichEditor({
     }, 3000);
     return () => {
       clearInterval(interval);
-      saveContent();
+      saveContentRef.current();
     };
-  }, [saveContent]);
+  }, []);
 
   // Selection change → detect when cursor enters/leaves a table cell
   const handleSelectionChange = useCallback(() => {
@@ -599,6 +452,9 @@ export default function RichEditor({
         <div
           ref={editorRef}
           contentEditable
+          role="textbox"
+          aria-label="Note content"
+          aria-multiline="true"
           suppressContentEditableWarning
           onInput={handleInput}
           onKeyDown={handleKeyDown}

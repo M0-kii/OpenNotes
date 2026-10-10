@@ -5,9 +5,10 @@ import type { TitlebarStyle } from "../types";
 
 interface Props {
   style: TitlebarStyle;
+  onClose?: () => Promise<void>;
 }
 
-export default function TitleBar({ style }: Props) {
+export default function TitleBar({ style, onClose }: Props) {
   const [isMaximized, setIsMaximized] = useState(false);
   const appWindowRef = useRef(getCurrentWindow());
   const isMac = style === "macos";
@@ -71,6 +72,7 @@ export default function TitleBar({ style }: Props) {
 
   const handleClose = async () => {
     try {
+      if (onClose) { await onClose(); return; }
       await appWindowRef.current.close();
     } catch (e) {
       console.error("Failed to close:", e);

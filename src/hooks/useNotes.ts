@@ -3,6 +3,8 @@ import type { Note, NoteType } from "../types";
 import * as db from "../lib/db";
 import { generateId } from "../lib/utils";
 import { parseWikilinks } from "../lib/linkUtils";
+import { NoteSaveQueue, type NoteDraft } from "../lib/noteSaveQueue";
+import { readDrafts, writeDrafts } from "../lib/draftRecovery";
 
 interface UseNotesOptions {
   // null = All Notes (no folder filter)
@@ -19,51 +21,93 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Per-id queue so two editors editing different notes can't clobber
-  // each other within the debounce window.
-  const pendingSavesRef = useRef<Map<string, string>>(new Map());
-  // Version counter per note ID so stale flushSave callbacks can detect
-  // that a newer saveNoteContent fired during their async DB write and
-  // skip the stale setNotes call (prevents content disappearing).
-  const saveVersionRef = useRef<Map<string, number>>(new Map());
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [hasPendingSaves, setHasPendingSaves] = useState(false);
+  const retryDelayRef = useRef(1000);
+  const journalErrorRef = useRef(false);
+  const recoveryErrorRef = useRef(false);
+  const refreshRequestRef = useRef(0);
+  const editVersionRef = useRef(0);
+  const mountedRef = useRef(true);
+  const queueRef = useRef<NoteSaveQueue | null>(null);
+  if (!queueRef.current) {
+    queueRef.current = new NoteSaveQueue(async (id, draft) => {
+      if (draft.title !== undefined) await db.updateNoteTitle(id, draft.title);
+      if (draft.content !== undefined) {
+        await db.updateNoteContent(id, draft.content);
+        await db.setNoteLinks(id, parseWikilinks(draft.content).map((link) => link.target));
+      }
+    }, (entries) => {
+      if (mountedRef.current) setHasPendingSaves(entries.length > 0);
+      try {
+        writeDrafts(localStorage, entries);
+        journalErrorRef.current = false;
+      } catch {
+        journalErrorRef.current = true;
+        if (mountedRef.current) setSaveError("Recovery copy could not be stored. Keep this window open until notes are saved.");
+      }
+    });
+  }
+  const queue = queueRef.current;
   const initialLoadDone = useRef(false);
   const [backlinks, setBacklinks] = useState<Note[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       try {
         await db.initDb();
         const all = await db.getAllNotes();
-        setNotes(all);
+        if (cancelled) return;
+        // Recover only existing notes, including drafts of notes moved to Trash.
+        // Never recreate a permanently deleted note from an old journal.
+        try {
+          const drafts = readDrafts(localStorage);
+          const recovered: Array<[string, NoteDraft]> = [];
+          for (const [id, draft] of drafts) {
+            if (await db.getNoteById(id, true)) recovered.push([id, draft]);
+          }
+          if (cancelled) return;
+          for (const [id, draft] of recovered) queue.enqueue(id, draft);
+          if (!recovered.length) writeDrafts(localStorage, []);
+        } catch {
+          recoveryErrorRef.current = true;
+          setSaveError("The recovery copy could not be read. It has been kept for recovery.");
+        }
+        setNotes(queue.overlay(all));
         if (all.length > 0) {
           setSelectedId(all[0].id);
         }
         initialLoadDone.current = true;
+        if (queue.size) void flushSave();
       } catch (e) {
         console.error("Failed to initialize database:", e);
         setError(String(e));
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
     load();
+    return () => { cancelled = true; };
   }, []);
 
   const selectedNote = notes.find((n) => n.id === selectedId) ?? null;
 
   const refreshNotes = useCallback(async () => {
+    const request = ++refreshRequestRef.current;
+    const version = editVersionRef.current;
     try {
       if (searchQuery.trim()) {
         const results = await db.searchNotes(searchQuery.trim(), folderId);
-        setNotes(results);
+        if (request === refreshRequestRef.current && version === editVersionRef.current) setNotes(queue.overlay(results));
       } else {
         const all = await db.getAllNotes(folderId);
-        setNotes(all);
+        if (request === refreshRequestRef.current && version === editVersionRef.current) setNotes(queue.overlay(all));
       }
     } catch (e) {
       console.error("Failed to refresh notes:", e);
     }
-  }, [searchQuery, folderId]);
+  }, [searchQuery, folderId, queue]);
 
   // Debounced for search (200ms), immediate for folder switch.
   useEffect(() => {
@@ -86,58 +130,38 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
     }
   }, [notes, selectedId]);
 
-  const flushSave = useCallback(async () => {
-    if (pendingSavesRef.current.size === 0) return;
-    const entries = Array.from(pendingSavesRef.current.entries());
-    // Snapshot versions BEFORE clearing so we can detect saves queued
-    // during our async await below.
-    const versionsSnapshot = new Map(saveVersionRef.current);
-    pendingSavesRef.current.clear();
-    for (const [id, content] of entries) {
-      try {
-        await db.updateNoteContent(id, content);
-        // Update link graph from any [[wikilinks]] in the content.
-        const links = parseWikilinks(content);
-        const linkTargets = links.map((l) => l.target);
-        await db.setNoteLinks(id, linkTargets);
-        // Skip setNotes if a newer saveNoteContent fired during the await
-        // (its content is already in the next timer's pendingSavesRef).
-        const currentVersion = saveVersionRef.current.get(id) ?? 0;
-        const snapshotVersion = versionsSnapshot.get(id) ?? 0;
-        if (currentVersion !== snapshotVersion) continue;
-        setNotes((prev) =>
-          prev.map((n) =>
-            n.id === id
-              ? { ...n, content, updated_at: new Date().toISOString() }
-              : n
-          )
-        );
-      } catch (e) {
-        console.error("Failed to save note:", e);
-      }
+  const flushSave = useCallback(async (): Promise<boolean> => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    try {
+      await queue.flush();
+      retryDelayRef.current = 1000;
+      if (mountedRef.current && !journalErrorRef.current && !recoveryErrorRef.current) setSaveError(null);
+      return true;
+    } catch (e) {
+      console.error("Failed to save notes:", e);
+      if (!mountedRef.current) return false;
+      setSaveError("Changes could not be saved. Your edits are kept here; retrying automatically.");
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => { void flushSave(); }, retryDelayRef.current);
+      retryDelayRef.current = Math.min(retryDelayRef.current * 2, 30000);
+      return false;
     }
-  }, []);
+  }, [queue]);
+
+  const saveDraft = useCallback((id: string, draft: NoteDraft) => {
+    editVersionRef.current++;
+    queue.enqueue(id, draft);
+    setNotes((prev) => prev.map((n) => n.id === id
+      ? { ...n, ...draft, updated_at: new Date().toISOString() } : n));
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => { void flushSave(); }, 400);
+  }, [queue, flushSave]);
 
   const saveNoteContent = useCallback(
     (id: string, content: string) => {
-      // Bump version so any in-flight flushSave can detect our content is
-      // newer and skip its stale setNotes call.
-      saveVersionRef.current.set(
-        id,
-        (saveVersionRef.current.get(id) ?? 0) + 1
-      );
-      setNotes((prev) =>
-        prev.map((n) =>
-          n.id === id
-            ? { ...n, content, updated_at: new Date().toISOString() }
-            : n
-        )
-      );
-      pendingSavesRef.current.set(id, content);
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => flushSave(), 500);
+      saveDraft(id, { content });
     },
-    [flushSave]
+    [saveDraft]
   );
 
   const createNote = useCallback(async (noteType: NoteType = "note", title: string = "") => {
@@ -177,6 +201,7 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
         await db.softDeleteNote(id);
       } catch (e) {
         console.error("Failed to delete note:", e);
+        return;
       }
       setNotes((prev) => {
         const filtered = prev.filter((n) => n.id !== id);
@@ -203,12 +228,13 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
 
   const permanentlyDeleteNote = useCallback(async (id: string) => {
     try {
+      if (!await flushSave()) return;
       await db.permanentlyDeleteNote(id);
       setTrashedNotes((prev) => prev.filter((n) => n.id !== id));
     } catch (e) {
       console.error("Failed to permanently delete note:", e);
     }
-  }, []);
+  }, [flushSave]);
 
   const refreshBacklinks = useCallback(async (noteId: string) => {
     if (!noteId) {
@@ -220,19 +246,8 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
   }, []);
 
   const renameNote = useCallback(async (id: string, title: string) => {
-    try {
-      await db.updateNoteTitle(id, title);
-    } catch (e) {
-      console.error("Failed to rename note:", e);
-    }
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === id
-          ? { ...n, title, updated_at: new Date().toISOString() }
-          : n
-      )
-    );
-  }, []);
+    saveDraft(id, { title });
+  }, [saveDraft]);
 
   const toggleFavorite = useCallback(async (id: string) => {
     try {
@@ -295,8 +310,10 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
-      flushSave();
+      mountedRef.current = false;
+      void flushSave();
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, [flushSave]);
@@ -309,6 +326,8 @@ export function useNotes({ folderId, createInFolderId }: UseNotesOptions) {
     setSearchQuery,
     isLoading,
     error,
+    saveError,
+    hasPendingSaves,
     createNote,
     deleteNote,
     renameNote,

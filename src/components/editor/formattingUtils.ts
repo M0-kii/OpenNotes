@@ -9,8 +9,9 @@ export function getParentBlock(node: Node | null): HTMLElement | null {
   while (current) {
     if (current instanceof HTMLElement) {
       const parent = current.parentElement;
+      if (current.getAttribute("contenteditable") === "true") return current;
       // If parent is contenteditable, this child IS the block
-      if (parent && parent.isContentEditable) {
+      if (parent && (parent.isContentEditable || parent.getAttribute("contenteditable") === "true")) {
         return current;
       }
       // Known block-level elements

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { FileText, GitBranch, ListTodo } from "lucide-react";
 
 interface Props {
@@ -51,63 +51,58 @@ export default function NoteTypePopup({
   if (!open || !position) return null;
 
   return createPortal(
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          ref={popupRef}
-          initial={{ opacity: 0, scale: 0.95, y: -4 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: -4 }}
-          transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
-          style={{
-            position: "fixed",
-            top: position.top,
-            left: position.left,
-          }}
-          className="z-[9999] min-w-[140px]
-                     rounded-[10px] glass border border-border
-                     shadow-[0_8px_32px_rgba(0,0,0,0.18)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]
-                     backdrop-blur-xl py-1 overflow-hidden"
-        >
-          <button
-            onClick={() => {
-              onNote();
-              onClose();
-            }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px]
-                       text-sidebar-text/80 hover:bg-hover-subtle
-                       transition-colors duration-100 tracking-[-0.01em]"
-          >
-            <FileText className="w-3.5 h-3.5 text-sidebar-textSecondary" strokeWidth={1.5} />
-            Note
-          </button>
-          <button
-            onClick={() => {
-              onMindmap();
-              onClose();
-            }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px]
-                       text-sidebar-text/80 hover:bg-hover-subtle
-                       transition-colors duration-100 tracking-[-0.01em]"
-          >
-            <GitBranch className="w-3.5 h-3.5 text-sidebar-textSecondary" strokeWidth={1.5} />
-            Mind Map
-          </button>
-          <button
-            onClick={() => {
-              onTodo();
-              onClose();
-            }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px]
-                       text-sidebar-text/80 hover:bg-hover-subtle
-                       transition-colors duration-100 tracking-[-0.01em]"
-          >
-            <ListTodo className="w-3.5 h-3.5 text-sidebar-textSecondary" strokeWidth={1.5} />
-            Todo List
-          </button>
-        </motion.div>
-      )}
-    </AnimatePresence>,
+    <motion.div
+      ref={popupRef}
+      initial={{ opacity: 0, scale: 0.95, y: -4 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+      style={{
+        position: "fixed",
+        top: position.top,
+        left: position.left,
+      }}
+      className="z-[9999] min-w-[140px]
+                 rounded-[10px] glass border border-border
+                 shadow-[0_8px_32px_rgba(0,0,0,0.18)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]
+                 backdrop-blur-xl py-1 overflow-hidden"
+    >
+      <button
+        onClick={() => {
+          onNote();
+          onClose();
+        }}
+        className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px]
+                   text-sidebar-text/80 hover:bg-hover-subtle
+                   transition-colors duration-100 tracking-[-0.01em]"
+      >
+        <FileText className="w-3.5 h-3.5 text-sidebar-textSecondary" strokeWidth={1.5} />
+        Note
+      </button>
+      <button
+        onClick={() => {
+          onMindmap();
+          onClose();
+        }}
+        className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px]
+                   text-sidebar-text/80 hover:bg-hover-subtle
+                   transition-colors duration-100 tracking-[-0.01em]"
+      >
+        <GitBranch className="w-3.5 h-3.5 text-sidebar-textSecondary" strokeWidth={1.5} />
+        Mind Map
+      </button>
+      <button
+        onClick={() => {
+          onTodo();
+          onClose();
+        }}
+        className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px]
+                   text-sidebar-text/80 hover:bg-hover-subtle
+                   transition-colors duration-100 tracking-[-0.01em]"
+      >
+        <ListTodo className="w-3.5 h-3.5 text-sidebar-textSecondary" strokeWidth={1.5} />
+        Todo List
+      </button>
+    </motion.div>,
     document.body
   );
 }

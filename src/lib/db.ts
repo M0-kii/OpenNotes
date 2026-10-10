@@ -2,16 +2,26 @@ import Database from "@tauri-apps/plugin-sql";
 import type { Folder, Note } from "../types";
 import { generateId } from "./utils";
 
-let db: Database | null = null;
+let dbPromise: Promise<Database> | null = null;
+let initPromise: Promise<void> | null = null;
 
 async function getDb(): Promise<Database> {
-  if (!db) {
-    db = await Database.load("sqlite:opennotes.db");
-  }
-  return db;
+  if (!dbPromise) dbPromise = Database.load("sqlite:opennotes.db").catch((error) => {
+    dbPromise = null;
+    throw error;
+  });
+  return dbPromise;
 }
 
-export async function initDb(): Promise<void> {
+export function initDb(): Promise<void> {
+  if (!initPromise) initPromise = prepareDb().catch((error) => {
+    initPromise = null;
+    throw error;
+  });
+  return initPromise;
+}
+
+async function prepareDb(): Promise<void> {
   const database = await getDb();
 
   await database.execute(
@@ -279,10 +289,10 @@ export async function toggleFavorite(id: string): Promise<void> {
   );
 }
 
-export async function getNoteById(id: string): Promise<Note | null> {
+export async function getNoteById(id: string, includeDeleted = false): Promise<Note | null> {
   const database = await getDb();
   const rows = await database.select<Note[]>(
-    "SELECT * FROM notes WHERE id = $1 AND deleted_at IS NULL",
+    `SELECT * FROM notes WHERE id = $1${includeDeleted ? "" : " AND deleted_at IS NULL"}`,
     [id]
   );
   return rows.length > 0 ? rows[0] : null;
@@ -427,6 +437,7 @@ export async function permanentlyDeleteFolder(id: string): Promise<void> {
 }
 
 export async function getTrashedNotes(): Promise<Note[]> {
+  await initDb();
   const database = await getDb();
   return await database.select<Note[]>(
     "SELECT * FROM notes WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC"
@@ -434,6 +445,7 @@ export async function getTrashedNotes(): Promise<Note[]> {
 }
 
 export async function getTrashedFolders(): Promise<Folder[]> {
+  await initDb();
   const database = await getDb();
   return await database.select<Folder[]>(
     "SELECT * FROM folders WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC"
@@ -488,6 +500,7 @@ export async function getNoteCountInFolder(
 }
 
 export async function getNoteCountsByFolder(): Promise<Record<string, number>> {
+  await initDb();
   const database = await getDb();
   const rows = await database.select<{ folder_id: string; c: number }[]>(
     "SELECT folder_id, COUNT(*) as c FROM notes WHERE folder_id IS NOT NULL AND deleted_at IS NULL GROUP BY folder_id"
@@ -516,6 +529,7 @@ export async function searchNotes(
 }
 
 export async function getAllSettings(): Promise<Record<string, unknown>> {
+  await initDb();
   const database = await getDb();
   const rows = await database.select<{ key: string; value: string }[]>(
     "SELECT key, value FROM settings"
@@ -620,6 +634,7 @@ export async function markReminderNotified(id: string): Promise<void> {
 }
 
 export async function getDueReminders(): Promise<Note[]> {
+  await initDb();
   const database = await getDb();
   return await database.select<Note[]>(
     "SELECT * FROM notes WHERE reminder_at IS NOT NULL AND reminder_at <= datetime('now') AND reminder_notified = 0 AND deleted_at IS NULL"
