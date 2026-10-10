@@ -28,7 +28,7 @@ export function parse(content: string): MindmapGraphV2 {
 
   if (isV2Graph(raw)) {
     // Coerce node fields defensively in case an older v2 blob is missing
-    // `collapsed` (added in this commit's wave).
+    // Older v2 notes may be missing collapsed.
     const nodes: MindmapNodeV2[] = raw.nodes.map((n) => ({
       id: String(n.id),
       text: typeof n.text === "string" ? n.text : "",
